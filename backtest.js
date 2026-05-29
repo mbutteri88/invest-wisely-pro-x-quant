@@ -73,16 +73,16 @@ function capeBtLabel(cape) {
 }
 
 const BT_PERIODS = {
-  1973: { label: '1973 — Stagflazione OPEC', color: '#e37400', bg: 'rgba(227,116,0,.08)', context: 'Embargo petrolifero OPEC (ottobre 1973). Inflazione al 12%, azioni −48% in 2 anni. Il peggior inizio per un piano PAC nella storia moderna — oro +162% nello stesso periodo.', crisis: [1973, 1974] },
-  1980: { label: '1980 — Volcker shock', color: '#d93025', bg: 'rgba(217,48,37,.08)', context: 'Paul Volcker porta i tassi al 20% per schiacciare l\'inflazione. Azioni −28%, obbligazioni devastate. Poi il più lungo bull market della storia (1982-2000).', crisis: [1980, 1981] },
-  1987: { label: '1987 — Black Monday', color: '#9334e6', bg: 'rgba(147,52,230,.08)', context: 'Black Monday 19 ottobre 1987: azioni −22% in UN giorno. Ma il mercato recuperò entro 2 anni — esempio di crash violento ma breve. Il PAC comprò a sconto.', crisis: [1987] },
-  1995: { label: '1995 — Lancio dot-com', color: '#1e8e3e', bg: 'rgba(30,142,62,.08)', context: 'Partenza nella fase espansiva pre-bolla internet. Rendimenti azionari eccezionali 1995-1999, poi crash violento 2000-2002. Ottima finestra per capire l\'euforia.', crisis: [2000, 2001, 2002] },
-  2000: { label: '2000 — Burst dot-com', color: '#d93025', bg: 'rgba(217,48,37,.08)', context: 'Crollo della bolla internet. Azioni −49% in 3 anni (2000-2002). NASDAQ −78%. Chi ha iniziato qui ha visto il capitale dimezzarsi — poi il recupero fino al 2007.', crisis: [2000, 2001, 2002] },
-  2004: { label: '2004 — Pre-crisi finanziaria', color: '#1a73e8', bg: 'rgba(26,115,232,.08)', context: 'Partenza in crescita moderata prima della grande crisi del 2008. Piano PAC che incontra prima un bull market (2004-2007) poi il peggior crash dal 1929.', crisis: [2008, 2009] },
-  2008: { label: '2008 — Crisi finanziaria globale', color: '#d93025', bg: 'rgba(217,48,37,.1)', context: 'Il peggiore crash da 1929. S&P500 −57%, MSCI World −54%. Le correlazioni tra azioni e obbligazioni implosero. Chi ha comprato in caduta ha triplicato in 10 anni.', crisis: [2008, 2009] },
-  2012: { label: '2012 — Crisi Euro sovrana', color: '#e37400', bg: 'rgba(227,116,0,.08)', context: 'Crisi dei debiti sovrani europei. Spread BTP-Bund a 500bp. Draghi: "whatever it takes" (luglio 2012) segna il bottom. Poi bull market fino al 2022.', crisis: [2011, 2012] },
-  2019: { label: '2019 — Pre-COVID', color: '#1e8e3e', bg: 'rgba(30,142,62,.08)', context: 'Partenza in anno neutro, poi COVID-19 (febbraio-marzo 2020): azioni −34% in 33 giorni. Recovery completata in meno di 6 mesi — il crash più veloce della storia.', crisis: [2020] },
-  2022: { label: '2022 — Inflazione & rialzo tassi', color: '#00897b', bg: 'rgba(0,137,123,.08)', context: 'Il 2022 è unico: azioni −20% E obbligazioni −15% contemporaneamente — entrambi in drawdown. Il 60/40 perde −17%: il peggior anno dal 1937 per portafogli bilanciati.', crisis: [2022] },
+  1970: { label: '1970 \u2192 Stagflazione OPEC (crisi 1973-74)', color: '#e37400', bg: 'rgba(227,116,0,.08)', context: 'Inizio nel 1970: 3 anni di accumulo, poi embargo petrolifero OPEC (ottobre 1973) che colpisce un capitale gia formato. Inflazione al 12%, azioni \u221248% in 2 anni \u2014 oro +162%. Stress test: la crisi morde dopo la fase di accumulo, non subito.', crisis: [1973, 1974] },
+  1977: { label: '1977 \u2192 Volcker shock (crisi 1980-81)', color: '#d93025', bg: 'rgba(217,48,37,.08)', context: 'Inizio nel 1977: si accumula capitale, poi Paul Volcker porta i tassi al 20% per schiacciare inflazione (1980-81). Azioni \u221228%, obbligazioni devastate. Poi il piu lungo bull market della storia (1982-2000).', crisis: [1980, 1981] },
+  1984: { label: '1984 \u2192 Black Monday (crisi 1987)', color: '#9334e6', bg: 'rgba(147,52,230,.08)', context: 'Inizio nel 1984: 3 anni di accumulo, poi il Black Monday del 19 ottobre 1987 (azioni \u221222% in UN giorno) colpisce il capitale formato. Il mercato recupero entro 2 anni \u2014 crash violento ma breve.', crisis: [1987] },
+  1995: { label: '1995 \u2192 Bolla dot-com (crisi 2000-02)', color: '#1e8e3e', bg: 'rgba(30,142,62,.08)', context: 'Inizio nella fase espansiva pre-bolla internet. Rendimenti eccezionali 1995-1999 accumulano un grande capitale, poi il crash 2000-2002 lo falcidia. Stress test della euforia seguita dal crollo.', crisis: [2000, 2001, 2002] },
+  1997: { label: '1997 \u2192 Burst dot-com (crisi 2000-02)', color: '#d93025', bg: 'rgba(217,48,37,.08)', context: 'Inizio nel 1997: 3 anni di forte accumulo nella bolla, poi il crollo internet. Azioni \u221249% in 3 anni (2000-2002), NASDAQ \u221278%. Chi aveva accumulato vide il capitale dimezzarsi \u2014 poi recupero fino al 2007.', crisis: [2000, 2001, 2002] },
+  2004: { label: '2004 \u2192 Crisi finanziaria (crisi 2008-09)', color: '#1a73e8', bg: 'rgba(26,115,232,.08)', context: 'Inizio nel 2004: bull market 2004-2007 accumula capitale, poi il peggior crash dal 1929. Lo stress test vero: il capitale formato incontra la crisi finanziaria globale nel mezzo del piano.', crisis: [2008, 2009] },
+  2005: { label: '2005 \u2192 Lehman (crisi 2008-09)', color: '#d93025', bg: 'rgba(217,48,37,.1)', context: 'Inizio nel 2005: 3 anni di accumulo prima del crollo. S&P500 \u221257%, MSCI World \u221254% nel 2008-09, le correlazioni azioni-obbligazioni implosero. Il capitale gia formato subisce il pieno impatto \u2014 poi triplica in 10 anni.', crisis: [2008, 2009] },
+  2009: { label: '2009 \u2192 Crisi Euro sovrana (crisi 2011-12)', color: '#e37400', bg: 'rgba(227,116,0,.08)', context: 'Inizio nel 2009: si accumula nella ripresa, poi la crisi dei debiti sovrani europei (2011-2012). Spread BTP-Bund a 500bp. Draghi (whatever it takes, luglio 2012) segna il bottom. Poi bull market fino al 2022.', crisis: [2011, 2012] },
+  2017: { label: '2017 \u2192 COVID-19 (crisi 2020)', color: '#1e8e3e', bg: 'rgba(30,142,62,.08)', context: 'Inizio nel 2017: 3 anni di accumulo, poi il crollo COVID-19 (febbraio-marzo 2020): azioni \u221234% in 33 giorni sul capitale formato. Recovery completata in meno di 6 mesi \u2014 il crash piu veloce della storia.', crisis: [2020] },
+  2019: { label: '2019 \u2192 Inflazione & tassi (crisi 2022)', color: '#00897b', bg: 'rgba(0,137,123,.08)', context: 'Inizio nel 2019: si accumula capitale, poi il 2022 unico nella storia \u2014 azioni \u221220% E obbligazioni \u221215% contemporaneamente. Il 60/40 perde \u221217%: il peggior anno dal 1937 per portafogli bilanciati. Lo stress test colpisce il capitale formato.', crisis: [2022] },
 };
 
 // Inflazione storica annua (CPI USA approssimato) per periodo, per deflatare
@@ -97,13 +97,35 @@ const HIST_INFLATION = {
 
 // Stato Backtesting
 let btState = {
-  startYear: 1973,
+  startYear: 1970,
   port: 'eq60',
   pac: 500,
   w: 10000,
   showReal: false,
+  seqCrisis: 2008,   // crisi selezionata per lo stress test di sequenza
+  seqMode: 'cap_pac', // modalità versamento: 'cap_pac' | 'solo_cap' | 'solo_pac'
+  crisisSeqMode: 'solo_cap', // modalità versamento per la sezione Stress Test Macro
+  crisisSeqStage: 'meta', // stadio del piano per lo Stress Test Macro: inizio/meta/fine
 };
-let chartBt = null, chartBtDD = null, chartBtComp = null;
+
+// Configurazione crisi per il sequence-of-returns stress test.
+// startYear: anno in cui far partire la simulazione (3 anni prima del crollo,
+// così c'è una fase di accumulo). crashYear: anno del crollo. horizon: durata.
+// Gli stadi (inizio/metà/fine) sono simulati col capitale già accumulato (w0)
+// che rappresenta quanto un investitore avrebbe al momento del crollo.
+const BT_SEQ_CRISES = {
+  1973: { label: 'Stagflazione OPEC 1973-74', crashYear: 1973, desc: 'Azioni −48% in 2 anni con inflazione al 12%. Il peggior regime per un 60/40.' },
+  1980: { label: 'Volcker shock 1980-81', crashYear: 1980, desc: 'Tassi al 20%, azioni −28%, obbligazioni devastate.' },
+  1987: { label: 'Black Monday 1987', crashYear: 1987, desc: 'Azioni −22% in un giorno. Crash violento ma recuperato in 2 anni.' },
+  2000: { label: 'Bolla dot-com 2000-02', crashYear: 2000, desc: 'Azioni −49% in 3 anni, NASDAQ −78%. Crisi da valutazioni estreme (CAPE 44).' },
+  2008: { label: 'Crisi finanziaria globale 2008-09', crashYear: 2008, desc: 'S&P500 −57%, MSCI World −54%. Le correlazioni azioni-obbligazioni implosero.' },
+  2011: { label: 'Crisi Euro sovrana 2011-12', crashYear: 2011, desc: 'Spread BTP-Bund a 500bp. "Whatever it takes" segna il bottom.' },
+  2020: { label: 'COVID-19 2020', crashYear: 2020, desc: 'Azioni −34% in 33 giorni. Il crash più veloce della storia, recupero in 6 mesi.' },
+  2022: { label: 'Inflazione & rialzo tassi 2022', crashYear: 2022, desc: 'Azioni −20% E obbligazioni −15% insieme. Peggior anno dal 1937 per il 60/40.' },
+  1990: { label: 'Recessione 1990 (Golfo)', crashYear: 1990, desc: 'Guerra del Golfo e shock petrolifero. Recessione USA, azioni −20%.' },
+  1998: { label: 'Crisi LTCM / Russia 1998', crashYear: 1998, desc: 'Default russo e collasso LTCM. Azioni −19% in poche settimane.' },
+};
+let chartBt = null, chartBtDD = null, chartBtComp = null, chartBtSeq = null;
 let btInitialized = false;
 
 function initBacktest() {
@@ -145,6 +167,23 @@ function initBacktest() {
         if (cs) cs.style.display = 'none';
       }
     } catch(_) {}
+  };
+
+  // Sequence-risk crisis selector buttons
+  const seqBtns = document.getElementById('btSeqCrisisBtns');
+  if (seqBtns) seqBtns.onclick = e => {
+    const b = e.target.closest('[data-crisis]'); if (!b) return;
+    btState.seqCrisis = +b.dataset.crisis;
+    document.querySelectorAll('#btSeqCrisisBtns .gbtn').forEach(x => x.classList.remove('a-blue'));
+    b.classList.add('a-blue');
+  };
+  // Sequence-risk contribution mode buttons
+  const seqModeBtns = document.getElementById('btSeqModeBtns');
+  if (seqModeBtns) seqModeBtns.onclick = e => {
+    const b = e.target.closest('[data-mode]'); if (!b) return;
+    btState.seqMode = b.dataset.mode;
+    document.querySelectorAll('#btSeqModeBtns .gbtn').forEach(x => x.classList.remove('a-blue'));
+    b.classList.add('a-blue');
   };
 }
 
@@ -197,10 +236,16 @@ function getCorrMultiplier(eqDraw, obDraw) {
 // mercati economici (CAPE basso) → rendimenti futuri attesi più alti.
 // Questo NON altera la struttura dei crash storici (i mesi negativi rimangono
 // negativi), agisce solo sul drift medio annualizzato del componente azionario.
-function simulateBacktest(portKey, startYear, pacMonthly, w0) {
+function simulateBacktest(portKey, startYear, pacMonthly, w0, skipEvents) {
   const startIdx = yearToHistIdx(startYear);
   const years = Math.min(state.years, Math.floor((HIST_MONTHLY.length - startIdx) / 12));
   const months = years * 12;
+  // Aggiunte lump sum (PIC) e prelievi una tantum impostati nel simulatore principale.
+  // Vengono riflessi nel backtest così la simulazione corrisponde ai dati dell'utente.
+  // skipEvents=true nelle simulazioni sintetiche (rischio di sequenza) dove gli eventi
+  // a date fisse distorcerebbero il confronto tra stadi con orizzonti diversi.
+  const btPics = (!skipEvents && Array.isArray(state.pics)) ? state.pics : [];
+  const btExps = (!skipEvents && Array.isArray(state.exps)) ? state.exps : [];
   
   const eqW = getEquityWeight(portKey, state.age);
   const goldW = getGoldWeight(portKey);
@@ -268,6 +313,19 @@ function simulateBacktest(portKey, startYear, pacMonthly, w0) {
     totalInvested += pacMonthly;
     const mid = portValue + pacMonthly / 2;
     portValue = Math.max(0, portValue + pacMonthly + mid * portRet);
+
+    // Eventi una tantum a inizio di ciascun anno (coerente col simulatore principale):
+    // aggiunte lump sum (PIC) e prelievi (uscite). Applicati a fine mese di dicembre
+    // dell'anno corrispondente (m+1 multiplo di 12 → fine anno yr).
+    if ((m + 1) % 12 === 0) {
+      const yr = (m + 1) / 12; // anno 1-based appena completato
+      for (const p of btPics) {
+        if (+p.year === yr) { portValue += +p.amount; totalInvested += +p.amount; }
+      }
+      for (const e of btExps) {
+        if (+e.year === yr) { portValue = Math.max(0, portValue - +e.amount); totalInvested -= +e.amount; }
+      }
+    }
     monthlyReturns.push(portRet);  // rendimento "puro" del portafoglio nel mese
 
     monthlyValues.push(portValue);
@@ -554,6 +612,177 @@ function buildCorrInfo(period, portKey, result) {
       <span>Az.↔Oro: normale <strong style="color:var(--green)">${CORR_PAIR('eq','real').toFixed(2)}</strong> → crisi <strong style="color:var(--orange)">${CORR_PAIR_STRESS('eq','real').toFixed(2)}</strong></span>
     </div>
     <div style="margin-top:6px;font-size:11.5px;color:var(--text3)">⚠️ Nel 2022 azioni e obbligazioni hanno correlato positivamente (+0.6) per la prima volta dagli anni '70: il 60/40 non ha diversificato come atteso. Nell'agosto 2024 la correlazione è tornata negativa (flight-to-quality). Le correlazioni statiche usate nei modelli parametrici sottostimano il rischio in mercati stressati.</div>`;
+}
+
+// ── Sequence of Returns Risk: stessa crisi a inizio / metà / fine piano ─────
+// Simula tre investitori che incontrano la STESSA crisi storica con capitale
+// accumulato diverso (poco/medio/molto), isolando l'effetto dello stadio di vita.
+function runSequenceRiskStress() {
+  const crisisId = btState.seqCrisis || 2008;
+  const cfg = BT_SEQ_CRISES[crisisId];
+  if (!cfg) return;
+
+  const portKey = btState.port === 'sim' ? state.portfolio : btState.port;
+  // Preset con leva / managed futures non backtestabili
+  if ({ ec_us_9060:1, ec_glob_9060:1, return_stack:1 }[portKey]) {
+    document.getElementById('btSeqRiskResults').style.display = 'block';
+    document.getElementById('btSeqRiskContext').innerHTML =
+      'Lo stress test di sequenza non è disponibile per i portafogli con leva o managed futures (privi di serie storica coerente).';
+    document.getElementById('btSeqRiskCards').innerHTML = '';
+    document.getElementById('btSeqRiskNote').innerHTML = '';
+    if (chartBtSeq) { chartBtSeq.destroy(); chartBtSeq = null; }
+    return;
+  }
+
+  // Valori importati dal simulatore (o dallo stato backtest)
+  const baseW0  = btState.w   ?? state.w   ?? 10000;
+  const basePac = btState.pac ?? state.pac ?? 1000;
+  // Modalità di versamento selezionata
+  const mode = btState.seqMode || 'cap_pac';
+  const modeLabel = { cap_pac: 'Capitale iniziale + PAC', solo_cap: 'Solo capitale iniziale (lump sum)', solo_pac: 'Solo PAC (capitale iniziale 0)' }[mode];
+
+  // Validazione: la modalità scelta richiede dati che potrebbero essere a zero nel simulatore.
+  const needsCap = (mode === 'solo_cap' || mode === 'cap_pac');
+  const needsPac = (mode === 'solo_pac');
+  if ((needsCap && baseW0 <= 0) || (needsPac && basePac <= 0)) {
+    document.getElementById('btSeqRiskResults').style.display = 'block';
+    const what = mode === 'solo_pac' ? 'un PAC mensile maggiore di zero' : 'un capitale iniziale maggiore di zero';
+    document.getElementById('btSeqRiskContext').innerHTML =
+      `La modalità <strong>${modeLabel}</strong> richiede ${what}, ma nel simulatore non è impostato. ` +
+      `Modifica i valori nella scheda Simulatore (o nella sezione Portafoglio del Backtesting) e riprova, oppure scegli un'altra modalità.`;
+    document.getElementById('btSeqRiskCards').innerHTML = '';
+    document.getElementById('btSeqRiskNote').innerHTML = '';
+    if (chartBtSeq) { chartBtSeq.destroy(); chartBtSeq = null; }
+    return;
+  }
+
+  // startYear dinamico: 3 anni prima del crollo (fase di accumulo), con clamp ai dati
+  const minYear = 1970;
+  const startYear = Math.max(minYear, cfg.crashYear - 3);
+  const yearsBeforeCrash = cfg.crashYear - startYear;
+  const maxAvail = Math.floor((HIST_MONTHLY.length - yearToHistIdx(startYear)) / 12);
+
+  const pac = basePac;
+  // Tre momenti del piano in cui può arrivare la crisi, combinati con la modalità
+  // di versamento scelta. Il "capitale al crollo" rappresenta quanto è esposto:
+  //  - cap_pac : capitale base + accumulo PAC crescente per stadio
+  //  - solo_cap: solo capitale (lump sum), crescente per stadio, nessun PAC
+  //  - solo_pac: nessun capitale iniziale, solo PAC; l'esposizione cresce per stadio
+  // recovery = anni residui dopo il crollo (molti a inizio, pochi a fine piano).
+  // Tutti e tre gli stadi simulano la STESSA crisi sulla stessa finestra temporale
+  // (3 anni di accumulo prima del crollo + 5 anni di osservazione del crollo/recupero).
+  // L'unica variabile è il CAPITALE già accumulato al crollo, che cresce con lo stadio.
+  // Così il Max Drawdown riflette sempre la crisi selezionata, non altre crisi che
+  // cadrebbero in orizzonti più lunghi.
+  const stageDefs = [
+    { key: 'inizio', label: 'Crisi a INIZIO piano', accumMonths: 12 },
+    { key: 'meta',   label: 'Crisi a METÀ piano',   accumMonths: 12 * 12 },
+    { key: 'fine',   label: 'Crisi a FINE piano',   accumMonths: 12 * 25 },
+  ];
+  const windowYears = Math.min(yearsBeforeCrash + 5, maxAvail); // finestra comune
+
+  const stages = stageDefs.map(s => {
+    const yrs = s.accumMonths / 12;
+    // Stima del capitale realmente accumulato a quel punto del piano: capitale iniziale
+    // cresciuto a un rendimento medio + PAC accumulato anch'esso cresciuto. Questo rende
+    // gli stadi distinti ANCHE quando il PAC è 0 (il capitale cresce per i rendimenti).
+    const gMonthly = 0.005; // ~6%/a, crescita media di riferimento per stimare l'accumulo
+    const grownCap = baseW0 * Math.pow(1 + gMonthly, s.accumMonths);
+    // Valore futuro di una rendita mensile (PAC) capitalizzata
+    const grownPac = basePac > 0 ? basePac * ((Math.pow(1 + gMonthly, s.accumMonths) - 1) / gMonthly) : 0;
+    let w0, pacUsed, desc;
+    if (mode === 'solo_cap') {
+      // Solo capitale: il capitale iniziale è cresciuto fino a questo stadio, nessun PAC
+      w0 = grownCap;
+      pacUsed = 0;
+      desc = `~${fmt(w0)} al crollo (capitale iniziale cresciuto in ${yrs} anni), nessun PAC`;
+    } else if (mode === 'solo_pac') {
+      // Solo PAC: nessun capitale iniziale, solo i versamenti accumulati e cresciuti
+      w0 = grownPac;
+      pacUsed = basePac;
+      desc = `~${fmt(w0)} accumulati col solo PAC (€${fmtN(basePac)}/m) in ${yrs} anni`;
+    } else {
+      // cap_pac: capitale iniziale cresciuto + PAC accumulato e cresciuto
+      w0 = grownCap + grownPac;
+      pacUsed = basePac;
+      desc = basePac > 0
+        ? `~${fmt(w0)} al crollo (capitale + ${yrs} anni di PAC), poi €${fmtN(basePac)}/m`
+        : `~${fmt(w0)} al crollo (capitale iniziale cresciuto in ${yrs} anni), PAC €0/m`;
+    }
+    return { ...s, w0, pacUsed, desc };
+  });
+
+  const savedYears = state.years;
+  const results = stages.map(s => {
+    state.years = windowYears; // stessa finestra per tutti: misura la STESSA crisi
+    const r = simulateBacktest(portKey, startYear, s.pacUsed, s.w0, true);
+    return { ...s, r };
+  });
+  state.years = savedYears;
+
+  // ── Render ──
+  document.getElementById('btSeqRiskResults').style.display = 'block';
+  document.getElementById('btSeqRiskContext').innerHTML =
+    `<strong>${cfg.label}</strong> — ${cfg.desc} La simulazione parte nel ${startYear} ` +
+    `(crollo nel ${cfg.crashYear}), modalità <strong>${modeLabel}</strong>, portafoglio <strong>${getPortLabel(portKey)}</strong>. ` +
+    `Confronta i tre momenti in cui la crisi può colpire il tuo piano.`;
+
+  const fmtPct = (v) => (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%';
+  document.getElementById('btSeqRiskCards').innerHTML = results.map(s => {
+    const ddColor = s.r.maxDD < -0.3 ? 'var(--red)' : s.r.maxDD < -0.15 ? 'var(--orange)' : 'var(--green)';
+    // Perdita in euro = drawdown applicato al capitale esposto al crollo
+    const lossEur = Math.round(s.w0 * s.r.maxDD);
+    const row = (label, val, color) => `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--text2)">${label}</span><strong style="font-family:'DM Mono',monospace${color?`;color:${color}`:''}">${val}</strong></div>`;
+    return `<div style="padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">${s.label}</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">${s.desc}</div>
+      ${row('Capitale al crollo', fmt(s.w0), 'var(--blue)')}
+      ${row('Max Drawdown', (s.r.maxDD*100).toFixed(1)+'%', ddColor)}
+      ${row('Perdita al bottom', fmt(lossEur), 'var(--red)')}
+      ${row('Valore finale', fmt(s.r.finalValue))}
+    </div>`;
+  }).join('');
+
+  // Grafico: traiettoria del valore in EURO reali per i tre stadi (dati del simulatore)
+  if (chartBtSeq) chartBtSeq.destroy();
+  const ctx = document.getElementById('chBtSeqRisk');
+  const colors = ['#1e8e3e', '#e37400', '#d93025'];
+  const maxLen = Math.max(...results.map(s => s.r.annualValues.length));
+  chartBtSeq = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: Array.from({ length: maxLen }, (_, i) => startYear + i),
+      datasets: results.map((s, i) => ({
+        label: s.label,
+        data: s.r.annualValues,  // valore reale in euro (capitale + PAC del simulatore)
+        borderColor: colors[i], backgroundColor: 'transparent', borderWidth: 2.5, tension: 0.2, pointRadius: 2,
+      })),
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top' },
+        title: { display: true, text: 'Valore del portafoglio in € — stessa crisi, capitale esposto diverso' },
+        tooltip: { callbacks: { title: c => 'Anno ' + c[0].label, label: c => ' ' + c.dataset.label + ': ' + fmt(c.raw) } },
+      },
+      scales: { y: { ticks: { callback: v => fmt(v) }, title: { display: true, text: 'Valore (€)' } } },
+    },
+  });
+
+  // Nota interpretativa: il drawdown % è simile (stessa crisi), ma la PERDITA IN EURO
+  // cresce con lo stadio perché il capitale esposto è maggiore.
+  const lossInizio = Math.round(results[0].w0 * results[0].r.maxDD);
+  const lossFine   = Math.round(results[2].w0 * results[2].r.maxDD);
+  document.getElementById('btSeqRiskNote').innerHTML =
+    `<strong>Lettura:</strong> lo stesso crollo del ${cfg.crashYear} provoca una caduta percentuale simile in tutti gli stadi ` +
+    `(è la stessa crisi), ma la <strong>perdita in euro</strong> cambia radicalmente: circa <strong>${fmt(Math.abs(lossInizio))}</strong> ` +
+    `se la crisi arriva a inizio piano, contro circa <strong>${fmt(Math.abs(lossFine))}</strong> se arriva verso la fine. ` +
+    `Questo è il rischio di sequenza: la stessa crisi fa molto più male quando hai già accumulato un grande capitale, ` +
+    `e ti restano pochi anni per recuperare. È il motivo per cui conviene ridurre gradualmente la quota azionaria ` +
+    `avvicinandosi all'obiettivo (glide path).`;
+
+  document.getElementById('btSeqRiskResults').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function runAllBacktests() {

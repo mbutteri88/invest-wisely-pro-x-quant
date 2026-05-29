@@ -2937,7 +2937,7 @@ function pdfSafe(s) {
     '\u00B2':'^2','\u00B3':'^3',
     '\u00BC':'1/4','\u00BD':'1/2','\u00BE':'3/4',
     '\u00A9':'(c)','\u00AE':'(R)','\u2122':'(TM)',
-    '\u20AC':'EUR',     // €
+    '\u20AC':'EUR ',    // € -> EUR con spazio per staccare dal numero
     '\u00A3':'GBP','\u00A5':'JPY','\u00A2':'c',
     // freccie
     '\u2192':'->','\u2190':'<-','\u2194':'<->','\u21D2':'=>','\u21D0':'<=',
@@ -3093,6 +3093,15 @@ async function exportExcel() {
     }
     const wsBT = XLSX.utils.aoa_to_sheet([hdrBT, ...btRows]);
     wsBT['!cols'] = [10,28,18,18,16,16,16,14].map(w=>({wch:w}));
+    // Nota: analisi interattive aggiuntive non esportabili per combinazione
+    XLSX.utils.sheet_add_aoa(wsBT, [
+      [],
+      ['Analisi interattive aggiuntive (nell\'applicazione):'],
+      ['Rischio di Sequenza', 'Stessa crisi a inizio/meta/fine piano — la perdita in € cresce col capitale accumulato'],
+      ['Stress Test Macro', 'Percorso mensile esatto durante le 10 crisi storiche principali'],
+      ['Modalita versamento', 'Capitale + PAC · Solo capitale · Solo PAC — usano i valori del simulatore'],
+      ['Eventi inclusi', 'La tabella sopra riflette aggiunte una tantum (PIC) e prelievi impostati nel simulatore'],
+    ], { origin: -1 });
 
     // ── 6. Sequence Risk multiplo ──────────────────────────────
     const hdrSR = ['Modalità Crash', 'Timing', 'Severità', 'Valore Finale (€)', 'Gap vs Base (€)', 'Gap vs Base (%)'];
@@ -3908,10 +3917,15 @@ async function generatePDF() {
     y = doc.lastAutoTable.finalY + 5;
     narrative(
       'Lettura: l\'IRR (rendimento del piano) considera il timing dei versamenti PAC; il TWR (rendimento asset) misura la performance pura del portafoglio, confrontabile tra periodi. ' +
-      'Il Max Drawdown misura la massima perdita dal picco precedente nell\'intera serie. ' +
+      'Il Max Drawdown misura la massima perdita dal picco precedente nell\'intera serie. La tabella riflette anche eventuali aggiunte una tantum (PIC) e prelievi impostati nel simulatore. ' +
       'Nota metodologica: i dati usano rendimenti in USD; l\'effetto cambio EUR/USD non e incluso. ' +
       'Il backtest non e applicabile ai portafogli con leva (Efficient Core) o managed futures (Return Stacking). ' +
       'Per la tabella completa con confronto tra portafogli diversi sullo stesso periodo usare il tab Backtesting Storico nell\'applicazione.'
+    );
+    narrative(
+      'Analisi interattive aggiuntive (disponibili nell\'applicazione): il Rischio di Sequenza confronta la stessa crisi a inizio, meta e fine piano, mostrando come la perdita in euro cresca con il capitale accumulato anche a parita di caduta percentuale. ' +
+      'Lo Stress Test Macro simula il percorso mensile esatto durante le 10 crisi storiche principali. ' +
+      'Entrambe supportano tre modalita di versamento (capitale + PAC, solo capitale, solo PAC) e usano i valori impostati nel simulatore.'
     );
 
     // ─────────── 7c. SEQUENCE RISK MULTIPLO ───────────

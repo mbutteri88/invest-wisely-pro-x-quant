@@ -169,10 +169,28 @@ async function downloadGuidePDF() {
     callout('Il backtest non prevede il futuro — i periodi storici non si ripetono identici. Il suo valore e mostrare la distribuzione degli esiti reali e aiutare a capire la propria tolleranza alle perdite temporanee. Un piano che non avrebbe retto nel 1973 merita una revisione.', AMBER, 'Come interpretare i risultati');
     callout('Golden Butterfly e Permanent Portfolio sono i portafogli piu robusti nei periodi di stagflazione (1973) e crisi bancarie (2008). Il 100% Azioni massimizza il rendimento su orizzonti lunghi ma richiede di restare investiti durante drawdown del 40-60%. Il backtest storico non e disponibile per Efficient Core (leva) e Return Stacking (managed futures): usa Simulatore, Monte Carlo o Frontiera Efficiente.', BLU, 'Insight storico');
 
+    h1('7a — Rischio di Sequenza (Sequence of Returns Risk)');
+    p('Sezione del tab Backtesting che risponde a una domanda diversa dal backtest classico: non "cosa sarebbe successo partendo in un certo anno", ma "la stessa crisi quanto fa male a seconda di QUANDO mi colpisce nel piano?". È uno dei rischi piu sottovalutati: due investitori con lo stesso portafoglio e lo stesso rendimento medio possono avere esiti molto diversi solo per l\'ordine in cui arrivano i rendimenti.');
+    h2('Le tre fasi del piano');
+    li('Crisi a INIZIO piano — poco capitale accumulato: la crisi colpisce un patrimonio ancora piccolo. La perdita in euro è contenuta e restano molti anni per recuperare comprando a sconto.');
+    li('Crisi a META piano — capitale intermedio gia formato. La stessa caduta percentuale pesa di piu in valore assoluto.');
+    li('Crisi a FINE piano — grande capitale accumulato e pochi anni per recuperare: è lo scenario piu pericoloso. La stessa identica crisi puo produrre una perdita in euro molte volte superiore a quella di inizio piano.');
+    h2('Le tre modalita di versamento');
+    li('Capitale + PAC — capitale iniziale piu versamenti periodici (lo scenario tipico di un piano di accumulo).');
+    li('Solo capitale (lump sum) — un unico investimento iniziale, senza versamenti successivi.');
+    li('Solo PAC — nessun capitale iniziale, solo versamenti periodici (chi parte da zero).');
+    p('Tutti i valori (capitale, PAC) sono quelli impostati nel Simulatore o nella sezione Portafoglio del Backtesting. Le 10 crisi storiche disponibili sono le stesse del backtest. Il capitale esposto al crollo cresce con la fase del piano perche tiene conto sia dei versamenti accumulati sia della crescita composta del capitale gia investito.');
+    callout('Il punto chiave: per la stessa crisi, la caduta percentuale (Max Drawdown) è simile in tutte le fasi — è sempre lo stesso evento storico. Ciò che cambia drasticamente è la PERDITA IN EURO, perché il capitale esposto è molto diverso. Una crisi a fine piano può cancellare anni di capitale accumulato.', AMBER, 'Come leggere le tre card');
+    callout('Questo è il motivo per cui i piani previdenziali riducono gradualmente la quota azionaria avvicinandosi all\'obiettivo (glide path): non per inseguire un rendimento maggiore, ma per ridurre il capitale esposto proprio quando una crisi farebbe piu danni e resterebbe meno tempo per recuperare.', BLU, 'Implicazione pratica');
+
     h1('7b — Stress Test Macro Storici — Path Mensile Esatto');
-    p('Sezione aggiuntiva del tab Backtesting: simulazione del percorso mensile preciso del portafoglio durante le 6 principali crisi macro della storia moderna (1970-2024). Diversamente dal backtesting PAC (che simula piani pluriennali con versamenti), questo modulo usa i rendimenti mensili reali senza PAC aggiuntivo — uno snapshot del capitale al momento della crisi.');
-    h2('Le 6 crisi simulate con dati mensili reali');
+    p('Sezione aggiuntiva del tab Backtesting: simulazione del percorso mensile preciso del portafoglio durante le 10 principali crisi macro della storia moderna (1970-2024), con i rendimenti mensili reali (ogni mese è il dato storico effettivo). Come nel Rischio di Sequenza, puoi scegliere la modalita di versamento (capitale + PAC, solo capitale, solo PAC) e la fase del piano in cui arriva la crisi (inizio, meta, fine): cosi il capitale esposto al crollo riflette quello realmente accumulato a quel punto del piano.');
+    h2('Le 10 crisi simulate con dati mensili reali');
     li('1973-74 Stagflazione OPEC — Embargo petrolifero OPEC ottobre 1973. Inflazione USA al 12%, azioni mondiali -48% in 23 mesi. Il peggior drawdown del dopoguerra per i portafogli bilanciati. Finestra 36 mesi. L\'oro sale +162% — unico asset con rendimento reale positivo.');
+    li('1980-82 Volcker Shock — Paul Volcker porta i tassi Fed al 20% per spezzare l\'inflazione a doppia cifra. Doppia recessione, azioni -27%, obbligazioni a lunga scadenza devastate. Premessa del piu lungo bull market della storia.');
+    li('1990 Recessione del Golfo — L\'invasione del Kuwait (agosto 1990) raddoppia il prezzo del petrolio. Recessione USA, azioni -20%. Crisi breve: recupero entro il 1991.');
+    li('1998 Crisi LTCM / Russia — Default russo e collasso dell\'hedge fund LTCM. Azioni -19% in poche settimane, recupero rapido dopo l\'intervento della Fed.');
+    li('2011-12 Crisi Euro Sovrana — Spread BTP-Bund oltre 500bp, timori sulla tenuta dell\'euro. Azioni europee -24%. Svolta col "whatever it takes" di Draghi. Rilevante per investitori italiani.');
     li('1987 Black Monday — 19 ottobre 1987: azioni -22.6% in un singolo giorno. Crash istantaneo da portfolio insurance (feedback loop di vendite automatizzate). Recovery completa in 22 mesi. Le obbligazioni tengono grazie al flight to quality immediato.');
     li('2000-02 Bolla Dot-com — CAPE S&P500 a 44 nel gennaio 2000. Azioni mondiali -49% in 33 mesi, NASDAQ -78%. Crisi lenta e prolungata: recovery azionaria oltre 5 anni. Le obbligazioni performano positivamente per tutto il periodo (flight to quality + tassi Fed in discesa da 6.5% a 1%).');
     li('2008-09 Crisi Finanziaria Globale — Lehman Brothers (settembre 2008). S&P500 -57%, MSCI World -54%. Unica crisi in cui le correlazioni tra asset esplodono verso 1: azioni, corporate bond e immobiliare crollano insieme. Solo Treasury USA e oro tengono. Recovery in 54 mesi.');
@@ -180,7 +198,7 @@ async function downloadGuidePDF() {
     li('2022 Inflazione & Tassi — Crisi unica: azioni -20% E obbligazioni -15% simultaneamente. Il 60/40 perde -17%, peggior anno dal 1937. Fed alza i tassi da 0.25% a 4.5% in 12 mesi. Solo cash e obbligazioni a brevissima duration tengono. L\'oro risulta quasi flat (-2%).');
     h2('Dati e metodologia');
     li('Fonte dati: HIST_MONTHLY — rendimenti mensili reali di azioni sviluppati, obbligazioni aggregate e oro dal 1970 al 2024 (DMS Yearbook 2024, Federal Reserve FRED, mercato internazionale oro). 660 osservazioni mensili verificate.');
-    li('Pesi portafoglio: quelli attuali del simulatore, aggiornati in tempo reale al cambio selezione. TER applicato mensilmente. Nessun PAC aggiuntivo — snapshot del capitale iniziale.');
+    li('Pesi portafoglio: quelli attuali del simulatore, aggiornati in tempo reale al cambio selezione. TER applicato mensilmente. Capitale, PAC e fase del piano sono quelli impostati: la fase scala il capitale esposto, coerente con la sezione Rischio di Sequenza.');
     li('Finestra: include alcuni mesi pre-crisi per contesto. Il drawdown e calcolato rispetto al picco della finestra mostrata.');
     li('Recovery: numero di mesi dal bottom per tornare al livello di inizio finestra (non al picco assoluto pre-crisi).');
     h2('Output per ogni crisi');
@@ -189,9 +207,9 @@ async function downloadGuidePDF() {
     li('10 mesi peggiori con rendimento portafoglio, breakdown per asset class (azioni/obbligazioni/oro) e drawdown cumulato.');
     li('KPI: Max Drawdown, perdita massima in euro, mese peggiore, recovery stimato, inflazione e tassi del periodo, rendimento S&P500 storico.');
     h2('Confronto tutte le crisi');
-    p('Il pulsante "Confronta tutte le crisi" esegue la simulazione per tutte e 6 le crisi contemporaneamente e produce: tabella comparativa (max drawdown, perdita in euro, mese peggiore, recovery) e grafico a linee sovrapposte con tutte le traiettorie sulla stessa scala temporale relativa (M+0, M+1...). Permette di vedere a colpo d\'occhio quali crisi sarebbero state piu devastanti per questo specifico portafoglio.');
-    callout('Nota importante: il confronto usa la stessa finestra temporale relativa (mese 0 = inizio crisi) per tutte le 6 crisi. Le finestre hanno lunghezze diverse (18-48 mesi) in base alla durata storica di ogni evento. La linea tratteggiata a 100 e il riferimento di pareggio.', AMBER, 'Come leggere il confronto');
-    callout('Il portafoglio Permanent (25/25/25/25) e il Golden Butterfly hanno storicamente il drawdown piu contenuto in tutte e 6 le crisi. Il 100% Azioni ha il drawdown piu elevato ma anche la recovery piu rapida nelle crisi a V (1987, 2020). Il 2022 e l\'unica crisi in cui le obbligazioni non proteggono — solo il cash e le obbligazioni a brevissima duration reggono.', BLU, 'Insight per allocazione');
+    p('Il pulsante "Confronta tutte le crisi" esegue la simulazione per tutte e 10 le crisi contemporaneamente e produce: tabella comparativa (max drawdown, perdita in euro, mese peggiore, recovery) e grafico a linee sovrapposte con tutte le traiettorie sulla stessa scala temporale relativa (M+0, M+1...). Permette di vedere a colpo d\'occhio quali crisi sarebbero state piu devastanti per questo specifico portafoglio.');
+    callout('Nota importante: il confronto usa la stessa finestra temporale relativa (mese 0 = inizio crisi) per tutte le 10 crisi. Le finestre hanno lunghezze diverse (18-48 mesi) in base alla durata storica di ogni evento. La linea tratteggiata a 100 e il riferimento di pareggio.', AMBER, 'Come leggere il confronto');
+    callout('Il portafoglio Permanent (25/25/25/25) e il Golden Butterfly hanno storicamente il drawdown piu contenuto in tutte e 10 le crisi. Il 100% Azioni ha il drawdown piu elevato ma anche la recovery piu rapida nelle crisi a V (1987, 2020). Il 2022 e l\'unica crisi in cui le obbligazioni non proteggono — solo il cash e le obbligazioni a brevissima duration reggono.', BLU, 'Insight per allocazione');
 
     h1('8 — Scheda Monte Carlo Avanzato');
     p('Tre modelli stocastici avanzati rispetto alla gaussiana standard. Permettono di simulare distribuzioni di rendimento piu realistiche con crash piu frequenti e volatilita variabile nel tempo.');

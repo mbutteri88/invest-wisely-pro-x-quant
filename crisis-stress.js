@@ -29,6 +29,20 @@ const CRISIS_SCENARIOS = [
     lessons: 'L\'oro è l\'unico asset con rendimento positivo reale. Il cash in termini reali perde per inflazione elevata. I portafogli ad alta obbligazionaria soffrono meno in nominale ma il rendimento reale è devastante.',
   },
   {
+    id: 'volcker8082',
+    label: '1980\u201382 Volcker Shock',
+    shortLabel: '1980\u201382',
+    color: '#c5221f',
+    bg: 'rgba(197,34,31,.10)',
+    startYr: 1980, startMo: 1,
+    peakYr:  1980, peakMo:  11,
+    troughYr:1982, troughMo: 7,
+    windowMonths: 36,
+    context: `<strong>Volcker Shock</strong> \u2014 Il presidente Fed Paul Volcker porta i tassi fino al <strong>20%</strong> per spezzare l'inflazione a doppia cifra. La cura \u00e8 brutale: doppia recessione, disoccupazione oltre il 10%. Le azioni perdono circa <strong>\u221227%</strong>, le obbligazioni a lunga scadenza devastate dai tassi altissimi. \u00c8 per\u00f2 la premessa del pi\u00f9 lungo bull market della storia (1982-2000).`,
+    macro: { infl: '13.5% \u2192 4%', rates: '20% (Fed Funds)', recov: '~28 mesi', sp500: '\u221227%' },
+    lessons: 'Quando la banca centrale alza i tassi in modo aggressivo, sia azioni che obbligazioni soffrono insieme. Il cash a breve rende molto. Regime opposto a quello deflazionistico: la diversificazione classica protegge poco.',
+  },
+  {
     id: 'blackmonday87',
     label: '1987 Black Monday',
     shortLabel: '1987',
@@ -43,6 +57,34 @@ const CRISIS_SCENARIOS = [
     lessons: 'Crash violento ma breve. Chi non ha venduto ha recuperato tutto entro 2 anni. Il PAC mensile ha comprato ai minimi: esempio perfetto di perché non uscire dal mercato nei crash.',
   },
   {
+    id: 'gulf90',
+    label: '1990 Recessione del Golfo',
+    shortLabel: '1990',
+    color: '#e8710a',
+    bg: 'rgba(232,113,10,.10)',
+    startYr: 1990, startMo: 6,
+    peakYr:  1990, peakMo:  7,
+    troughYr:1990, troughMo: 10,
+    windowMonths: 24,
+    context: `<strong>Guerra del Golfo e shock petrolifero</strong> \u2014 L'invasione irachena del Kuwait (agosto 1990) fa raddoppiare il prezzo del petrolio. Gli USA entrano in recessione. Le azioni perdono circa <strong>\u221220%</strong> tra luglio e ottobre 1990. Crisi relativamente breve: il recupero arriva entro il 1991 con la rapida vittoria militare e il calo del greggio.`,
+    macro: { infl: '5.4%', rates: '8% (Fed)', recov: '~8 mesi', sp500: '\u221220%' },
+    lessons: 'Shock geopolitico-petrolifero classico: colpisce le azioni ma si riassorbe in fretta quando l incertezza si risolve. Un PAC che continua durante lo shock compra a sconto prima del rimbalzo.',
+  },
+  {
+    id: 'ltcm98',
+    label: '1998 Crisi LTCM / Russia',
+    shortLabel: '1998',
+    color: '#a142f4',
+    bg: 'rgba(161,66,244,.10)',
+    startYr: 1998, startMo: 7,
+    peakYr:  1998, peakMo:  7,
+    troughYr:1998, troughMo: 8,
+    windowMonths: 18,
+    context: `<strong>Default russo e collasso di LTCM</strong> \u2014 La Russia dichiara default sul debito (agosto 1998). L'hedge fund Long-Term Capital Management, super-indebitato, collassa minacciando il sistema finanziario: la Fed coordina un salvataggio. Le azioni perdono circa <strong>\u221219%</strong> in poche settimane, ma il recupero \u00e8 rapidissimo (la Fed taglia i tassi). Crisi acuta ma breve.`,
+    macro: { infl: '1.6%', rates: '5.25% \u2192 4.75% (Fed)', recov: '~3 mesi', sp500: '\u221219%' },
+    lessons: 'Crisi di liquidit\u00e0 da leva eccessiva nel sistema. Risolta rapidamente dall intervento della banca centrale. Esempio di crash veloce dove restare investiti ha premiato in pochi mesi.',
+  },
+  {
     id: 'dotcom0002',
     label: '2000–02 Bolla Dot-com',
     shortLabel: '2000–02',
@@ -55,6 +97,20 @@ const CRISIS_SCENARIOS = [
     context: `<strong>Burst della bolla internet</strong> — Dopo anni di valutazioni stellari (CAPE 44 a gennaio 2000), il NASDAQ perde il <strong>−78%</strong> tra marzo 2000 e ottobre 2002. Il mercato mondiale azionario cede il <strong>−49%</strong>. Le obbligazioni performano positivamente (flight to quality, Fed taglia i tassi). L'oro sale moderatamente. Crisi lenta e prolungata: il recovery azionario richiede <strong>oltre 5 anni</strong>.`,
     macro: { infl: '2.8%', rates: '6.5% → 1.0% (Fed)', recov: '~62 mesi', sp500: '−49%' },
     lessons: 'Crisi lenta e devastante per i portafogli azionari pesanti. Le obbligazioni hanno protetto. Chi aveva CAPE alto in portafoglio ha sofferto di più. Il PAC ha mediato ma il recovery è stato lunghissimo.',
+  },
+  {
+    id: 'eurocrisis1112',
+    label: '2011\u201312 Crisi Euro Sovrana',
+    shortLabel: '2011\u201312',
+    color: '#1a73e8',
+    bg: 'rgba(26,115,232,.10)',
+    startYr: 2011, startMo: 5,
+    peakYr:  2011, peakMo:  7,
+    troughYr:2011, troughMo: 9,
+    windowMonths: 24,
+    context: `<strong>Crisi dei debiti sovrani europei</strong> \u2014 Grecia, Italia, Spagna sotto pressione: lo spread BTP-Bund supera i <strong>500 punti base</strong> e si teme la rottura dell'euro. Le azioni europee perdono circa <strong>\u221224%</strong>. La svolta arriva con il celebre <em>whatever it takes</em> di Mario Draghi (luglio 2012), che segna il bottom. Per gli investitori italiani \u00e8 una delle crisi pi\u00f9 rilevanti.`,
+    macro: { infl: '2.7%', rates: '1.5% \u2192 0.75% (BCE)', recov: '~14 mesi', sp500: '\u221219% (\u221224% Europa)' },
+    lessons: 'Crisi regionale europea: chi era esposto solo all azionario dell eurozona ha sofferto pi\u00f9 di chi era diversificato globalmente. Le obbligazioni core (Bund) hanno protetto, i periferici (BTP) no.',
   },
   {
     id: 'gfc0809',
@@ -109,9 +165,10 @@ function crisisYMtoIdx(yr, mo) {
 // ── Simula path mensile di un portafoglio durante una crisi ──
 // Ritorna array di oggetti {month, idx, eqRet, obRet, goldRet, portRet, cumValue}
 // portValue0 = 100 (normalizzato) — mostra % rispetto all'inizio
-function simulateCrisisPath(crisis, portKey, capitalEur) {
+function simulateCrisisPath(crisis, portKey, capitalEur, pacMonthly) {
   const startIdx = crisisYMtoIdx(crisis.startYr, crisis.startMo);
   const endIdx   = Math.min(startIdx + crisis.windowMonths, HIST_MONTHLY.length - 1);
+  const pac = pacMonthly || 0;  // PAC mensile opzionale (0 = snapshot puro)
 
   // Pesi portafoglio (usa funzioni già definite in main.js)
   const eqW   = typeof getEquityWeight === 'function' ? getEquityWeight(portKey, state?.age || 40) : 0.6;
@@ -121,9 +178,11 @@ function simulateCrisisPath(crisis, portKey, capitalEur) {
 
   const terMonthly = ((state?.ter ?? 0.2) / 100) / 12;
 
-  let cumValue = 100; // normalizzato a 100
+  let cumValue = 100; // normalizzato a 100 (per il path % senza PAC)
   let cumEur   = capitalEur;
+  let invested = capitalEur; // capitale versato (per modalità con PAC)
   let peak     = 100;
+  let peakEur  = capitalEur;
   let maxDD    = 0;
   let maxDDMonth = 0;
   let worstMonthRet = 0;
@@ -140,11 +199,24 @@ function simulateCrisisPath(crisis, portKey, capitalEur) {
 
     const portRet = eqW * eqRet + obW * obRet + goldW * goldRet + cashW * 0.002 - terMonthly;
 
+    // Valore normalizzato (senza PAC, per il grafico % e il drawdown "puro")
     cumValue *= (1 + portRet);
-    cumEur   *= (1 + portRet);
+    // Valore in euro: applica rendimento + versamento PAC (metodo midpoint)
+    if (pac > 0) {
+      const mid = cumEur + pac / 2;
+      cumEur = Math.max(0, cumEur + pac + mid * portRet);
+      invested += pac;
+    } else {
+      cumEur *= (1 + portRet);
+    }
 
     if (cumValue > peak) peak = cumValue;
-    const dd = peak > 0 ? (cumValue - peak) / peak : 0;
+    if (cumEur > peakEur) peakEur = cumEur;
+    // Drawdown: se c'è PAC usa il valore in euro (riflette il capitale reale esposto),
+    // altrimenti il valore normalizzato.
+    const dd = pac > 0
+      ? (peakEur > 0 ? (cumEur - peakEur) / peakEur : 0)
+      : (peak > 0 ? (cumValue - peak) / peak : 0);
     if (dd < maxDD) { maxDD = dd; maxDDMonth = idx - startIdx; }
     if (portRet < worstMonthRet) { worstMonthRet = portRet; worstMonthIdx = idx - startIdx; }
 
@@ -161,7 +233,8 @@ function simulateCrisisPath(crisis, portKey, capitalEur) {
       portRet,
       cumValue: +cumValue.toFixed(3),
       cumEur:   Math.round(cumEur),
-      drawdown: +((cumValue / peak - 1) * 100).toFixed(2),
+      invested: Math.round(invested),
+      drawdown: +((pac > 0 ? (cumEur/peakEur - 1) : (cumValue / peak - 1)) * 100).toFixed(2),
     });
   }
 
@@ -184,7 +257,10 @@ function simulateCrisisPath(crisis, portKey, capitalEur) {
     finalValue:  path[path.length - 1]?.cumValue ?? 100,
     finalEur:    path[path.length - 1]?.cumEur ?? capitalEur,
     recoveryMonth,
-    lossEur:     Math.round((capitalEur * maxDD)),
+    peakEur:     Math.round(peakEur),        // capitale massimo esposto al crollo
+    investedTot: Math.round(invested),       // totale versato (capitale + PAC)
+    startEur:    Math.round(capitalEur),     // capitale all'inizio della finestra
+    lossEur:     Math.round(peakEur * maxDD),// perdita reale dal picco (€)
     eqW, obW, goldW, cashW,
   };
 }
@@ -222,6 +298,22 @@ function buildCrisisUI() {
     </p>
     <!-- Pills crisi -->
     <div class="btn-group" id="crisisPills" style="flex-wrap:wrap;gap:6px;margin-bottom:16px">${pills}</div>
+
+    <!-- Modalità di versamento -->
+    <div style="font-size:11.5px;color:var(--text3);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Modalità di versamento</div>
+    <div class="btn-group" id="crisisModeBtns" style="flex-wrap:wrap;gap:6px;margin-bottom:16px">
+      <button class="gbtn a-red" data-mode="solo_cap">🏔️ Solo capitale</button>
+      <button class="gbtn" data-mode="cap_pac">💰 Capitale + PAC</button>
+      <button class="gbtn" data-mode="solo_pac">📅 Solo PAC</button>
+    </div>
+
+    <!-- Stadio del piano (quando arriva la crisi) -->
+    <div style="font-size:11.5px;color:var(--text3);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">A che punto del piano arriva la crisi</div>
+    <div class="btn-group" id="crisisStageBtns" style="flex-wrap:wrap;gap:6px;margin-bottom:16px">
+      <button class="gbtn" data-stage="inizio">🌱 Inizio piano</button>
+      <button class="gbtn a-red" data-stage="meta">⏳ Metà piano</button>
+      <button class="gbtn" data-stage="fine">🎯 Fine piano</button>
+    </div>
 
     <!-- Contesto crisi -->
     <div id="crisisContext" style="padding:14px 16px;border-radius:10px;font-size:12.5px;line-height:1.7;margin-bottom:16px;border:1px solid var(--border2);background:var(--bg2)"></div>
@@ -265,7 +357,8 @@ function buildCrisisUI() {
     <div style="margin-top:14px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;font-size:11.5px;color:var(--text3);line-height:1.7">
       <strong>Metodologia:</strong> I rendimenti mensili provengono da HIST_MONTHLY (DMS Yearbook 2024, FRED, mercato internazionale oro),
       calibrati sulle medie annue verificate. I pesi del portafoglio sono quelli attuali del simulatore.
-      TER applicato mensilmente. Nessun PAC aggiuntivo (snapshot del capitale iniziale).
+      TER applicato mensilmente. Capitale, PAC e stadio del piano sono quelli impostati: lo stadio scala il capitale
+      esposto al crollo (a inizio piano poco, a fine piano molto), coerente con la sezione Rischio di Sequenza del Backtesting.
       Drawdown calcolato rispetto al picco della finestra mostrata, non al picco assoluto storico.
     </div>
   </div>`;
@@ -284,6 +377,27 @@ function bindCrisisEvents() {
     b.classList.add('a-red');
     const crisis = CRISIS_SCENARIOS.find(c => c.id === b.dataset.crisis);
     if (crisis) { b.style.background = crisis.bg; renderCrisis(crisis.id); }
+  });
+  // Pulsanti modalità di versamento
+  const modeBtns = document.getElementById('crisisModeBtns');
+  if (modeBtns) modeBtns.addEventListener('click', e => {
+    const b = e.target.closest('[data-mode]'); if (!b) return;
+    if (typeof btState !== 'undefined') btState.crisisSeqMode = b.dataset.mode;
+    document.querySelectorAll('#crisisModeBtns .gbtn').forEach(x => x.classList.remove('a-red'));
+    b.classList.add('a-red');
+    // Ri-renderizza la crisi attiva con la nuova modalità
+    const active = document.querySelector('.crisis-pill.a-red');
+    if (active) renderCrisis(active.dataset.crisis);
+  });
+  // Pulsanti stadio del piano (inizio/meta/fine)
+  const stageBtns = document.getElementById('crisisStageBtns');
+  if (stageBtns) stageBtns.addEventListener('click', e => {
+    const b = e.target.closest('[data-stage]'); if (!b) return;
+    if (typeof btState !== 'undefined') btState.crisisSeqStage = b.dataset.stage;
+    document.querySelectorAll('#crisisStageBtns .gbtn').forEach(x => x.classList.remove('a-red'));
+    b.classList.add('a-red');
+    const active = document.querySelector('.crisis-pill.a-red');
+    if (active) renderCrisis(active.dataset.crisis);
   });
   // Render primo scenario di default
   renderCrisis(CRISIS_SCENARIOS[0].id);
@@ -323,7 +437,24 @@ function renderCrisis(crisisId) {
     return;
   }
 
-  const sim = simulateCrisisPath(crisis, portKey, capitalEur);
+  // Modalità di versamento (condivisa con il backtest): cap_pac / solo_cap / solo_pac
+  const seqMode = (typeof btState !== 'undefined' && btState.crisisSeqMode) || 'solo_cap';
+  // Stadio del piano in cui arriva la crisi: inizio / meta / fine.
+  // Usa la STESSA logica del backtest (Rischio di Sequenza): il capitale esposto è
+  // quello realmente accumulato a quel punto = capitale iniziale cresciuto + PAC
+  // accumulato e cresciuto. Resta distinto tra stadi anche se il PAC è 0.
+  const seqStage = (typeof btState !== 'undefined' && btState.crisisSeqStage) || 'meta';
+  const accumMonths = { inizio: 12, meta: 12 * 12, fine: 12 * 25 }[seqStage] || 12 * 12;
+  const basePac = btState?.pac ?? state?.pac ?? 0;
+  const baseCap = capitalEur;
+  const gM = 0.005; // ~6%/a crescita media di riferimento
+  const grownCap = baseCap * Math.pow(1 + gM, accumMonths);
+  const grownPac = basePac > 0 ? basePac * ((Math.pow(1 + gM, accumMonths) - 1) / gM) : 0;
+  let w0Sim, pacSim;
+  if (seqMode === 'cap_pac')      { w0Sim = grownCap + grownPac; pacSim = basePac; }
+  else if (seqMode === 'solo_pac'){ w0Sim = grownPac;            pacSim = basePac; }
+  else                            { w0Sim = grownCap;            pacSim = 0; } // solo_cap
+  const sim = simulateCrisisPath(crisis, portKey, w0Sim, pacSim);
   const portLabel = typeof getPortLabel === 'function' ? getPortLabel(portKey) : portKey;
 
   // ─── Contesto ───
@@ -347,11 +478,12 @@ function renderCrisis(crisisId) {
     ? `${sim.recoveryMonth} mesi`
     : `>${crisis.windowMonths} mesi (non recuperato nella finestra)`;
 
+  const stageLabel = { inizio: 'a inizio piano', meta: 'a metà piano', fine: 'a fine piano' }[seqStage] || '';
   const metrics = [
     { l: 'Portafoglio simulato', v: portLabel, c: crisis.color },
-    { l: 'Capitale iniziale', v: `€${capitalEur.toLocaleString('it-IT')}`, c: 'var(--blue)' },
+    { l: 'Capitale al picco (pre-crollo)', v: `€${sim.peakEur.toLocaleString('it-IT')}`, sub: `Crisi ${stageLabel}`, c: 'var(--blue)' },
     { l: 'Max Drawdown', v: `${(sim.maxDD * 100).toFixed(1)}%`, sub: `Bottom: ${sim.maxDDMonthLabel}`, c: ddColor },
-    { l: 'Perdita max (€)', v: `−€${Math.abs(sim.lossEur).toLocaleString('it-IT')}`, c: 'var(--red)' },
+    { l: 'Perdita max (€)', v: `−€${Math.abs(sim.lossEur).toLocaleString('it-IT')}`, sub: 'dal picco al bottom', c: 'var(--red)' },
     { l: 'Mese peggiore', v: `${(sim.worstMonthRet * 100).toFixed(1)}%`, sub: sim.worstMonthLabel, c: 'var(--red)' },
     { l: 'Recovery stimato', v: recStr, c: sim.recoveryMonth != null && sim.recoveryMonth < 24 ? 'var(--green)' : 'var(--orange)' },
     { l: `Inflazione (${crisis.peakYr})`, v: macro.infl, c: 'var(--text2)' },

@@ -1114,16 +1114,16 @@
     <div>
       <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:8px">Anno di inizio piano</div>
       <div class="btn-group" id="btStartYearBtns" style="flex-wrap:wrap">
-        <button class="gbtn a-blue" data-y="1973">1973 — Stagflazione</button>
-        <button class="gbtn" data-y="1980">1980 — Rialzo tassi</button>
-        <button class="gbtn" data-y="1987">1987 — Black Monday</button>
-        <button class="gbtn" data-y="1995">1995 — Pre dot-com</button>
-        <button class="gbtn" data-y="2000">2000 — Dot-com crash</button>
-        <button class="gbtn" data-y="2004">2004 — Pre-crisi</button>
-        <button class="gbtn" data-y="2008">2008 — Crisi finanziaria</button>
-        <button class="gbtn" data-y="2012">2012 — Euro-crisi</button>
-        <button class="gbtn" data-y="2019">2019 — Pre-COVID</button>
-        <button class="gbtn" data-y="2022">2022 — Inflazione</button>
+        <button class="gbtn a-blue" data-y="1970">1970 → Stagflazione '73</button>
+        <button class="gbtn" data-y="1977">1977 → Volcker '80</button>
+        <button class="gbtn" data-y="1984">1984 → Black Monday '87</button>
+        <button class="gbtn" data-y="1995">1995 → Dot-com '00</button>
+        <button class="gbtn" data-y="1997">1997 → Burst dot-com '00</button>
+        <button class="gbtn" data-y="2004">2004 → Crisi fin. '08</button>
+        <button class="gbtn" data-y="2005">2005 → Lehman '08</button>
+        <button class="gbtn" data-y="2009">2009 → Euro-crisi '11</button>
+        <button class="gbtn" data-y="2017">2017 → COVID '20</button>
+        <button class="gbtn" data-y="2019">2019 → Inflazione '22</button>
       </div>
     </div>
     <div>
@@ -1179,6 +1179,46 @@
     <div id="btCompareStats" style="margin-bottom:12px"></div>
     <div class="chart-wrap" style="height:340px"><canvas id="chBtComp"></canvas></div>
   </div>
+
+  <!-- ══ SEQUENCE OF RETURNS RISK ══ -->
+  <details class="sec" id="btSeqRiskSec" open style="cursor:default">
+    <summary style="cursor:pointer;list-style:none;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;padding:4px 0">
+      <span style="font-size:11px;color:var(--text3)">▸</span>
+      ⏱️ Rischio di Sequenza — cosa succede se becchi la crisi a INIZIO, METÀ o FINE del piano
+    </summary>
+    <div style="margin-top:14px">
+      <div style="margin-bottom:14px;font-size:12.5px;color:var(--text2);line-height:1.7">
+        <span style="display:inline-block;background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:11px;color:var(--text3);margin-bottom:8px">Diverso dal backtest qui sopra</span><br>
+        Il backtest classico (in alto) risponde a <em>"cosa sarebbe successo partendo in un certo anno"</em>. Questa sezione risponde a una domanda diversa: <em>"la stessa crisi, quanto fa male a seconda di quando mi colpisce nel piano?"</em> La stessa identica crisi storica colpisce in modo molto diverso a seconda di <strong>quando</strong> arriva nel tuo piano. Dopo aver scelto una crisi e premuto Esegui, vedrai <strong>tre card affiancate</strong>: <strong>Crisi a INIZIO piano</strong> (poco capitale, tanti anni per recuperare), <strong>Crisi a METÀ piano</strong>, e <strong>Crisi a FINE piano</strong> (molto capitale, pochi anni per recuperare). Confronta i Max Drawdown per vedere quanto conta il timing.
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Crisi da analizzare:</div>
+      <div class="btn-group" id="btSeqCrisisBtns" style="flex-wrap:wrap;margin-bottom:14px">
+        <button class="gbtn" data-crisis="1973">🛢️ Stagflazione '73</button>
+        <button class="gbtn" data-crisis="1980">📈 Volcker '80</button>
+        <button class="gbtn" data-crisis="1987">📉 Black Monday '87</button>
+        <button class="gbtn" data-crisis="1990">⛽ Golfo '90</button>
+        <button class="gbtn" data-crisis="1998">🇷🇺 LTCM '98</button>
+        <button class="gbtn" data-crisis="2000">💻 Dot-com '00</button>
+        <button class="gbtn a-blue" data-crisis="2008">🏦 Crisi fin. '08</button>
+        <button class="gbtn" data-crisis="2011">🇪🇺 Euro '11</button>
+        <button class="gbtn" data-crisis="2020">🦠 COVID '20</button>
+        <button class="gbtn" data-crisis="2022">🔥 Inflazione '22</button>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Modalità di versamento:</div>
+      <div class="btn-group" id="btSeqModeBtns" style="flex-wrap:wrap;margin-bottom:14px">
+        <button class="gbtn a-blue" data-mode="cap_pac">💰 Capitale + PAC</button>
+        <button class="gbtn" data-mode="solo_cap">🏔️ Solo capitale (lump sum)</button>
+        <button class="gbtn" data-mode="solo_pac">📅 Solo PAC (capitale 0)</button>
+      </div>
+      <button class="gbtn a-blue" onclick="runSequenceRiskStress()" style="padding:10px 20px;font-size:13.5px;font-weight:700;margin-bottom:14px">⏱️ Esegui stress test di sequenza</button>
+      <div id="btSeqRiskResults" style="display:none">
+        <div id="btSeqRiskContext" style="margin-bottom:14px;padding:12px 14px;border-radius:var(--radius-sm);font-size:12.5px;line-height:1.7;background:var(--bg2);border:1px solid var(--border)"></div>
+        <div id="btSeqRiskCards" style="margin-bottom:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px"></div>
+        <div class="chart-wrap" style="height:340px"><canvas id="chBtSeqRisk"></canvas></div>
+        <div id="btSeqRiskNote" style="margin-top:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12.5px;color:var(--text2);line-height:1.7"></div>
+      </div>
+    </div>
+  </details>
 </div>
 
 <!-- ══ STRESS TEST MACRO STORICI ══ -->

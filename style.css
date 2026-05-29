@@ -526,3 +526,8 @@ tbody tr:hover{background:var(--bg2)}
   border-radius: 6px;
   border-left: 2px solid rgba(26,115,232,.3);
 }
+
+/* Sezione collassabile (sequence risk) */
+#btSeqRiskSec summary::-webkit-details-marker { display: none; }
+#btSeqRiskSec summary span { transition: transform .2s; }
+#btSeqRiskSec[open] summary > span:first-child { transform: rotate(90deg); }
