@@ -111,14 +111,22 @@ async function downloadGuidePDF() {
 
     h1('3 — Scheda Scenari Economici');
     p('Eredita capitale, PAC, orizzonte e portafoglio dal Simulatore. Mostra come regimi macro storici e plausibili impattano lo stesso piano con moltiplicatori calibrati sui dati storici reali per asset class.');
+    h2('3.1 — Analisi scenario singolo');
+    p('Seleziona uno dei 6 regimi macro per vedere la proiezione deterministica del tuo piano in quel contesto, con grafico, tabella anno per anno e confronto finale tra tutti gli scenari.');
     li('Crescita Normale — baseline storica, rendimenti medi di lungo periodo.');
     li('Stagflazione — crescita bassa + inflazione alta (anni \'70). Penalizza bond e azioni growth.');
-    li('Recessione prolungata — drawdown azionario marcato, fuga verso bond governativi.');
-    li('Inflazione alta — oro e value sovra-performano, bond nominali soffrono significativamente.');
-    li('Boom tecnologico — equity growth sovra-performa, oro e bond sotto-performano.');
-    li('Deflazione/Giappone — rendimenti azionari piatti, bond reggono, inflazione vicina a zero per decenni.');
+    li('Recessione — drawdown azionario marcato, fuga verso bond governativi.');
+    li('Deflazione — rendimenti azionari piatti, bond reggono, inflazione vicina a zero.');
+    li('Bull Market — equity growth sovra-performa, oro e bond sotto-performano.');
+    li('Rialzo Tassi — obbligazioni colpite, azioni value piu resistenti, cash rivalutato.');
     callout('Puoi scegliere in quale fase temporale (inizio, meta, fine) far cadere lo scenario. Un regime stagflazionario a inizio piano e molto meno devastante dello stesso regime a fine accumulazione.', BLU, 'Timing dello scenario');
     p('Cambia il portafoglio nel Simulatore e torna qui: vedrai immediatamente quanto la composizione protegge o espone il piano. Il Permanent Portfolio e il Golden Butterfly sono i piu resilienti in scenari estremi.');
+    h2('3.2 — Simulazione Multi-Regime Stocastica');
+    p('In un piano di 20-35 anni non vivi un solo regime economico, ma una sequenza di regimi consecutivi. Questa sezione simula 1.000 percorsi in cui i regimi si alternano lungo il piano, mostrando la distribuzione reale dei possibili esiti.');
+    p('Risultati: bande P10/P25/P50/P75/P90 su grafico, heatmap del regime dominante anno per anno, probabilita di successo (percorsi che superano la soglia optionality), tabella percentili completa.');
+    li('Modalita automatica — usa una matrice di transizione calibrata sui cicli economici USA/EU post-1945 (NBER, Reinhart & Rogoff). Scegli il regime di partenza: la simulazione determina stocasticamente se ogni anno il regime continua o cambia, con probabilita diverse per ogni coppia di regimi.');
+    li('Modalita manuale avanzata — costruisci tu la sequenza di fasi (es. 10 anni crescita + 3 anni recessione + 17 anni crescita). Ogni fase ha durata modificabile. I rendimenti e l\'inflazione restano stocastici dentro ogni fase: ottieni 1.000 percorsi con la tua sequenza di macro-fasi.');
+    callout('La differenza rispetto all\'analisi scenario singolo e cruciale: qui ogni percorso attraversa piu regimi consecutivi, esattamente come accade nella realta. Il P10 multi-regime e il worst-case piu realistico disponibile nella suite.', BLU, 'Perche usare il multi-regime');
 
     h1('4 — Scheda A/B Confronto');
     p('Confronta due piani fianco a fianco. Utile per quantificare il costo/beneficio di qualsiasi decisione di portafoglio.');

@@ -327,7 +327,7 @@ function switchTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
   document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
   document.getElementById(`tab-${tabId}`).classList.add('active');
-  if (tabId==='scenarios') { updateEcoTimDesc(); renderEcoScenarios(); }
+  if (tabId==='scenarios') { updateEcoTimDesc(); renderEcoScenarios(); if (typeof initMultiRegime === 'function') initMultiRegime(); }
   if (tabId==='ab') renderAB();
   if (tabId==='mc') document.getElementById('mcAccYears').textContent=state.years;
   if (tabId==='decumulo') renderDecumulo();

@@ -901,6 +901,112 @@
     <table><thead><tr><th style="text-align:left">Età</th><th style="text-align:left">Anno</th><th>Valore Base</th><th>Valore Scenario</th><th>Δ</th><th>Inflaz. Anno</th><th>Reale (deflatato)</th></tr></thead><tbody id="ecoTable"></tbody></table>
   </div>
 </div>
+
+<!-- ════════════ SEZIONE MULTI-REGIME STOCASTICO ════════════ -->
+<div class="sec" style="border-top:2px solid var(--border2);margin-top:8px;padding-top:20px">
+  <div class="sec-label" style="font-size:15px">🔀 Simulazione Multi-Regime Stocastica
+    <span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:8px">1.000 percorsi · sequenza di regimi consecutivi lungo il piano</span>
+  </div>
+
+  <div class="info-box" style="margin-bottom:16px">
+    In un piano di 20–35 anni non vivi un solo regime economico: attraversi <strong>sequenze di regimi consecutivi</strong>
+    (crescita → recessione → ripresa → stagflazione…). Questa simulazione estrae 1.000 percorsi in cui i regimi si
+    alternano stocasticamente — in modalità <em>automatica</em> seguendo le probabilità di transizione storiche
+    (cicli economici post-1945), oppure in modalità <em>manuale avanzata</em> con una sequenza che definisci tu.
+    I rendimenti e l'inflazione restano stocastici dentro ogni fase (stesso motore del Monte Carlo principale).
+  </div>
+
+  <!-- Controlli modalità -->
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+    <div style="font-size:11.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Modalità</div>
+    <div class="btn-group" id="mrModeBtns">
+      <button class="gbtn a-blue" data-mr="auto"
+              onclick="multiRegimeState.mode='auto';renderMultiRegimeControls()">🎲 Automatico</button>
+      <button class="gbtn" data-mr="manual"
+              onclick="multiRegimeState.mode='manual';renderMultiRegimeControls()">🛠 Manuale avanzato</button>
+    </div>
+  </div>
+
+  <!-- Pannello AUTO -->
+  <div id="mrAutoPanel" style="margin-bottom:14px;padding:12px 14px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius-sm)">
+    <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:8px">
+      Regime di partenza
+    </div>
+    <div class="btn-group" id="mrStartBtns" style="flex-wrap:wrap">
+      <button class="gbtn a-blue" data-sr="normal_growth" onclick="multiRegimeState.startRegime='normal_growth';renderMultiRegimeControls()">📈 Crescita</button>
+      <button class="gbtn" data-sr="stagflation"   onclick="multiRegimeState.startRegime='stagflation';renderMultiRegimeControls()">🔥 Stagflazione</button>
+      <button class="gbtn" data-sr="recession"     onclick="multiRegimeState.startRegime='recession';renderMultiRegimeControls()">📉 Recessione</button>
+      <button class="gbtn" data-sr="deflation"     onclick="multiRegimeState.startRegime='deflation';renderMultiRegimeControls()">🧊 Deflazione</button>
+      <button class="gbtn" data-sr="bull_market"   onclick="multiRegimeState.startRegime='bull_market';renderMultiRegimeControls()">🚀 Bull Market</button>
+      <button class="gbtn" data-sr="high_rates"    onclick="multiRegimeState.startRegime='high_rates';renderMultiRegimeControls()">📊 Rialzo Tassi</button>
+    </div>
+    <div style="margin-top:10px;font-size:11.5px;color:var(--text3);line-height:1.6">
+      La simulazione parte dal regime selezionato e usa la <strong>matrice di transizione storica</strong>
+      per determinare se ogni anno il regime continua o cambia. Le probabilità sono calibrate sui cicli
+      economici USA/EU post-1945 (NBER, Reinhart &amp; Rogoff).
+    </div>
+  </div>
+
+  <!-- Pannello MANUALE -->
+  <div id="mrManualPanel" style="display:none;margin-bottom:14px;padding:12px 14px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius-sm)">
+    <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:8px">
+      Costruisci la sequenza di regimi
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="gbtn" style="border-color:rgba(30,142,62,.4);color:#1e8e3e"  onclick="mrAddPhase('normal_growth')">+ 📈 Crescita</button>
+      <button class="gbtn" style="border-color:rgba(227,116,0,.4);color:#e37400"  onclick="mrAddPhase('stagflation')">+ 🔥 Stagflazione</button>
+      <button class="gbtn" style="border-color:rgba(217,48,37,.4);color:#d93025"  onclick="mrAddPhase('recession')">+ 📉 Recessione</button>
+      <button class="gbtn" style="border-color:rgba(0,151,167,.4);color:#0097a7"  onclick="mrAddPhase('deflation')">+ 🧊 Deflazione</button>
+      <button class="gbtn" style="border-color:rgba(147,52,230,.4);color:#9334e6" onclick="mrAddPhase('bull_market')">+ 🚀 Bull Market</button>
+      <button class="gbtn" style="border-color:rgba(0,137,123,.4);color:#00897b"  onclick="mrAddPhase('high_rates')">+ 📊 Rialzo Tassi</button>
+    </div>
+    <div id="mrManualList"></div>
+    <div style="margin-top:8px;font-size:11.5px;color:var(--text3)">
+      Modifica la durata in anni di ogni fase. Rendimenti e inflazione restano stocastici
+      dentro ogni regime: ottieni 1.000 percorsi con la tua sequenza di macro-fasi.
+    </div>
+  </div>
+
+  <!-- Bottone lancia -->
+  <div style="margin-bottom:16px">
+    <button class="gbtn a-blue" style="font-size:13.5px;padding:10px 22px;font-weight:700"
+            onclick="launchMultiRegime()">▶ Lancia simulazione (1.000 percorsi)</button>
+  </div>
+
+  <!-- Placeholder pre-simulazione -->
+  <div id="mrPlaceholder" style="text-align:center;padding:28px 16px;color:var(--text3);font-size:13px;border:1px dashed var(--border2);border-radius:var(--radius-sm);margin-bottom:16px">
+    <div style="font-size:28px;margin-bottom:8px">🔀</div>
+    Configura le opzioni e premi <strong>Lancia simulazione</strong> per generare i 1.000 percorsi multi-regime.
+  </div>
+
+  <!-- Risultati (nascosti finché non si lancia) -->
+  <div id="mrResults" style="display:none">
+    <!-- KPI cards -->
+    <div id="mrKpi"></div>
+
+    <!-- Legenda grafico -->
+    <div class="legend" style="margin-top:4px">
+      <div class="li"><span class="ll" style="background:rgba(100,100,200,.45);height:3.5px"></span>P90 (limite superiore 90%)</div>
+      <div class="li"><span class="ll" style="background:rgba(100,100,200,.55);height:8px;border-radius:2px"></span>Banda centrale P25–P75</div>
+      <div class="li"><span class="ll" style="background:#5c6bc0;height:3.5px"></span>Mediana (P50)</div>
+      <div class="li"><span class="ll" style="background:#9c27b0;height:2px;border-top:2px dashed #9c27b0;background:none"></span>Media</div>
+      <div class="li"><span class="ll" style="background:#1a73e8;height:2px;border-top:2px dashed #1a73e8;background:none"></span>Base (crescita normale)</div>
+      <div class="li"><span class="ll-dash" style="border-color:var(--border)"></span>Optionality</div>
+    </div>
+    <div class="chart-wrap" style="height:320px"><canvas id="chMultiRegime"></canvas></div>
+
+    <!-- Heatmap regime dominante -->
+    <div style="margin-top:14px;margin-bottom:16px;padding:12px 14px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius-sm)">
+      <div id="mrHeatmap"></div>
+    </div>
+
+    <!-- Tabella percentili -->
+    <div class="sec-label" style="margin-top:4px">Distribuzione anno per anno</div>
+    <div id="mrTable"></div>
+  </div>
+</div>
+<!-- /multi-regime -->
+
 </div><!-- /tab-scenarios -->
 
 <!-- ══════════════════════════════════════════════════════ TAB 3: A/B -->

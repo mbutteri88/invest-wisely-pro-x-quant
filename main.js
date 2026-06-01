@@ -1761,6 +1761,503 @@ function selectEcoScenario(key) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// SIMULAZIONE MULTI-REGIME STOCASTICA
+//
+// Idea: in un piano di 30 anni non vivi un solo regime economico
+// ma una SEQUENZA di regimi consecutivi (es. crescita → recessione
+// → ripresa → stagflazione...). Questa sezione lo simula.
+//
+// Due modalità:
+//  • Automatico: matrice di transizione storica calibrata sui cicli
+//    economici USA/EU post-1945. Ad ogni anno il regime corrente
+//    ha una certa probabilità di continuare o cambiare.
+//  • Manuale: l'utente compone la sequenza a mano (regime + durata)
+//    e lancia 1.000 percorsi con inflazione e rendimenti stocastici
+//    dentro ogni fase.
+//
+// Metodologia rendimenti intra-regime:
+//  • μ = getRateEco() col regime attivo in quell'anno (coerente con
+//    il tab Scenari Economici deterministico)
+//  • σ = getPortfolioVol() × volMult del regime
+//  • Correzione Itō: μ_arith = μ + σ²/2  → E[CAGR] = μ target
+//  • Inflazione stocastica: N(inflMean, inflSigma) per anno,
+//    clampata a ±3σ (stesso approccio del MC Avanzato)
+//  • mid-year convention identica al simulatore principale
+// ══════════════════════════════════════════════════════════════
+
+// ── Matrice di transizione calibrata sui cicli 1945-2023 ─────
+// Righe = regime CORRENTE, colonne = regime SUCCESSIVO (anno dopo anno)
+// Fonte: NBER business cycles, Reinhart & Rogoff, dati BCE/Fed
+// Probabilità di RIMANERE nello stesso regime dipende dalla durata
+// media storica: crescita ~5a, recessione ~1.5a, bull ~8a, ecc.
+// Qui usiamo probabilità annue di transizione.
+const ECO_TRANSITION = {
+  //                       norm   stag   rec    defl   bull   hrate
+  normal_growth: { normal_growth:0.70, stagflation:0.06, recession:0.10, deflation:0.03, bull_market:0.08, high_rates:0.03 },
+  stagflation:   { normal_growth:0.20, stagflation:0.55, recession:0.08, deflation:0.02, bull_market:0.03, high_rates:0.12 },
+  recession:     { normal_growth:0.45, stagflation:0.05, recession:0.30, deflation:0.12, bull_market:0.06, high_rates:0.02 },
+  deflation:     { normal_growth:0.25, stagflation:0.02, recession:0.15, deflation:0.50, bull_market:0.05, high_rates:0.03 },
+  bull_market:   { normal_growth:0.15, stagflation:0.04, recession:0.08, deflation:0.02, bull_market:0.65, high_rates:0.06 },
+  high_rates:    { normal_growth:0.20, stagflation:0.15, recession:0.12, deflation:0.02, bull_market:0.08, high_rates:0.43 },
+};
+const ECO_KEYS = Object.keys(ECO_SCENARIOS);
+
+// Stato UI multi-regime
+const multiRegimeState = {
+  mode: 'auto',           // 'auto' | 'manual'
+  startRegime: 'normal_growth',  // regime iniziale (auto)
+  manualSeq: [],          // [{key, years}] — sequenza manuale
+  lastResult: null,       // cache ultimo risultato
+};
+
+// ── Campionamento dalla matrice di transizione ────────────────
+function _sampleNextRegime(currentKey) {
+  const row = ECO_TRANSITION[currentKey] || ECO_TRANSITION.normal_growth;
+  let r = Math.random(), cumul = 0;
+  for (const [k, p] of Object.entries(row)) {
+    cumul += p;
+    if (r <= cumul) return k;
+  }
+  return ECO_KEYS[ECO_KEYS.length - 1];
+}
+
+// ── Costruisce la sequenza di regimi per un percorso (modo auto) ─
+// Ritorna array[0..years-1] dove ogni elemento è la chiave del regime
+// attivo in quell'anno. Anno 0 = startRegime.
+function _buildRegimeSequence(startKey, years) {
+  const seq = [];
+  let cur = startKey;
+  for (let y = 0; y < years; y++) {
+    seq.push(cur);
+    cur = _sampleNextRegime(cur);
+  }
+  return seq;
+}
+
+// ── Costruisce la sequenza di regimi per un percorso (modo manuale) ─
+// Espande [{key, years}] in un array[0..totalYears-1].
+// Se la sequenza è più corta del piano, l'ultimo regime si estende fino alla fine.
+function _expandManualSeq(manualSeq, totalYears) {
+  const seq = [];
+  for (const { key, years: d } of manualSeq) {
+    for (let i = 0; i < d && seq.length < totalYears; i++) seq.push(key);
+  }
+  // Riempi eventuale residuo con l'ultimo regime della sequenza
+  const last = manualSeq[manualSeq.length - 1]?.key || 'normal_growth';
+  while (seq.length < totalYears) seq.push(last);
+  return seq;
+}
+
+// ── Core: proietta un singolo percorso data una sequenza di regimi ──
+// Restituisce il valore finale e l'array di valori anno per anno.
+function _projectOnePathMultiRegime(regimeSeq) {
+  const { w, age, years, portfolio, pics, exps, ter, pac } = state;
+  const terRate = ter / 100;
+  const vals = [w];
+  let cW = w, cumInfl = 1;
+
+  for (let y = 1; y <= years; y++) {
+    const ecoKey  = regimeSeq[y - 1];      // regime attivo anno y
+    const eco     = ECO_SCENARIOS[ecoKey] || ECO_SCENARIOS.normal_growth;
+    const curAge  = age + y;
+
+    // Costruisce una finestra "intera" per getRateEco (l'anno è sempre "in regime")
+    const fakeWin = { s: y, e: y };
+    const mu = getRateEco(portfolio, ecoKey, y, age, fakeWin);
+
+    // Volatilità × moltiplicatore di regime
+    const volBase = getPortfolioVol(portfolio, curAge);
+    const vol     = volBase * eco.volMult;
+
+    // Correzione Itō (uguale al MC principale)
+    const mu_arith = mu + 0.5 * vol * vol;
+    const r        = mu_arith + vol * randn_bm() - terRate;
+
+    // Inflazione stocastica del regime (clamp ±3σ)
+    const iMean = eco.inflMean  / 100;
+    const iSig  = eco.inflSigma / 100;
+    const iRaw  = iMean + iSig * randn_bm();
+    const inflY = Math.max(iMean - 3 * iSig, Math.min(iMean + 3 * iSig, iRaw));
+    cumInfl *= (1 + inflY);
+
+    const annPac = getPacForYear(y) * 12;
+    const pic    = pics.filter(p => +p.year === y).reduce((s, p) => s + (+p.amount || 0), 0);
+    const exp    = exps.filter(e => +e.year === y).reduce((s, e) => s + (+e.amount || 0), 0);
+
+    const midW = cW + (annPac + pic - exp) / 2;
+    cW += annPac + pic - exp + midW * r;
+    cW  = Math.max(0, cW);
+    vals.push(cW);
+  }
+  return { vals, finalVal: cW };
+}
+
+// ── Motore MC multi-regime principale ─────────────────────────
+// N = 1000 percorsi. Ritorna strutture per grafico + statistiche.
+function runMultiRegimeMC(N = 1000) {
+  const { years, age, opt } = state;
+  const mode     = multiRegimeState.mode;
+  const startKey = multiRegimeState.startRegime;
+
+  const timeSeries = Array.from({ length: years + 1 }, () => []);
+  // Conta frequenza regime per anno (per heatmap / regime più frequente)
+  const regimeFreq = Array.from({ length: years }, () => ({}));
+
+  for (let i = 0; i < N; i++) {
+    let regSeq;
+    if (mode === 'auto') {
+      regSeq = _buildRegimeSequence(startKey, years);
+    } else {
+      regSeq = _expandManualSeq(multiRegimeState.manualSeq, years);
+      // In modo manuale ogni percorso ha stessa sequenza deterministica di regimi
+      // ma rendimenti e inflazione restano stocastici → distribuzione valida
+    }
+
+    // Conta frequenza regimi per anno
+    regSeq.forEach((k, y) => {
+      regimeFreq[y][k] = (regimeFreq[y][k] || 0) + 1;
+    });
+
+    const { vals } = _projectOnePathMultiRegime(regSeq);
+    vals.forEach((v, y) => timeSeries[y].push(v));
+  }
+
+  // Percentili anno per anno
+  const pct = (arr, p) => {
+    const s = [...arr].sort((a, b) => a - b);
+    return s[Math.floor(s.length * p)] ?? 0;
+  };
+  const p10 = [], p25 = [], p50 = [], p75 = [], p90 = [], mean = [];
+  for (let y = 0; y <= years; y++) {
+    const ts = timeSeries[y];
+    p10.push(pct(ts, .10));
+    p25.push(pct(ts, .25));
+    p50.push(pct(ts, .50));
+    p75.push(pct(ts, .75));
+    p90.push(pct(ts, .90));
+    mean.push(ts.reduce((a, b) => a + b, 0) / ts.length);
+  }
+
+  // Tasso di successo
+  const finals = timeSeries[years];
+  const successRate = opt > 0
+    ? (finals.filter(v => v >= opt).length / N * 100)
+    : null;
+
+  // Regime più frequente per anno (per annotazione grafico)
+  const dominantRegime = regimeFreq.map(freq =>
+    Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] || 'normal_growth'
+  );
+
+  // Frequenze globali (% tempo in ciascun regime, media su tutti i percorsi)
+  const globalFreq = {};
+  for (const k of ECO_KEYS) globalFreq[k] = 0;
+  regimeFreq.forEach(freq => {
+    for (const [k, c] of Object.entries(freq)) globalFreq[k] = (globalFreq[k] || 0) + c;
+  });
+  const totalSlots = years * N;
+  for (const k of ECO_KEYS) globalFreq[k] = (globalFreq[k] / totalSlots * 100);
+
+  return { p10, p25, p50, p75, p90, mean, successRate, dominantRegime, globalFreq, N, finals };
+}
+
+// ── Render sezione multi-regime ───────────────────────────────
+let chartMultiRegime = null;
+
+function renderMultiRegime() {
+  const { years, age, opt } = state;
+  const ages = Array.from({ length: years + 1 }, (_, i) => age + i);
+
+  // Calcola baseline deterministica per confronto
+  const seqOn = state.seq && state.seq.on;
+  const dBase  = project('normal', seqOn);
+  const vBase  = dBase.map(d => d.value);
+
+  const res = runMultiRegimeMC(1000);
+  multiRegimeState.lastResult = res;
+
+  // ── KPI cards ────────────────────────────────────────────────
+  const succColor = res.successRate === null ? 'var(--text3)'
+    : res.successRate >= 70 ? 'var(--green)'
+    : res.successRate >= 40 ? 'var(--orange)'
+    : 'var(--red)';
+  const succTxt = res.successRate !== null ? res.successRate.toFixed(1) + '%' : '—';
+  const optNote = opt > 0
+    ? `soglia ${fmt(opt)}`
+    : 'imposta optionality nel Simulatore';
+
+  // Top-3 regimi per frequenza
+  const topRegimes = Object.entries(res.globalFreq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([k, pct]) => `${ECO_SCENARIOS[k].emoji} ${ECO_SCENARIOS[k].label} ${pct.toFixed(0)}%`)
+    .join(' · ');
+
+  document.getElementById('mrKpi').innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <div class="mcard">
+        <div class="ml">Mediana finale (P50)</div>
+        <div class="mv" style="color:var(--text);font-size:17px">${fmt(res.p50[years])}</div>
+        <div class="ms">1.000 percorsi multi-regime</div>
+      </div>
+      <div class="mcard">
+        <div class="ml">Range P10–P90</div>
+        <div class="mv" style="font-size:14px;color:var(--text2)">${fmt(res.p10[years])} – ${fmt(res.p90[years])}</div>
+        <div class="ms">intervallo 80% dei percorsi</div>
+      </div>
+      <div class="mcard">
+        <div class="ml">Prob. successo</div>
+        <div class="mv" style="color:${succColor};font-size:17px">${succTxt}</div>
+        <div class="ms">${optNote}</div>
+      </div>
+      <div class="mcard">
+        <div class="ml">Baseline (deterministico)</div>
+        <div class="mv" style="color:var(--blue);font-size:17px">${fmt(vBase[years])}</div>
+        <div class="ms">crescita normale senza regime</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:4px">
+      Regimi più frequenti nella simulazione: <strong style="color:var(--text2)">${topRegimes}</strong>
+    </div>`;
+
+  // ── Grafico ──────────────────────────────────────────────────
+  if (chartMultiRegime) { chartMultiRegime.destroy(); chartMultiRegime = null; }
+  const gC = 'rgba(0,0,0,.05)', tC = 'rgba(0,0,0,.45)';
+
+  chartMultiRegime = new Chart(document.getElementById('chMultiRegime'), {
+    type: 'line',
+    data: {
+      labels: ages,
+      datasets: [
+        // Banda esterna P10–P90
+        { label: 'P10', data: res.p10, borderColor: 'transparent', backgroundColor: 'rgba(100,100,200,.10)', pointRadius: 0, fill: '+1', tension: .35, borderWidth: 0 },
+        { label: 'P90', data: res.p90, borderColor: 'rgba(100,100,200,.25)', backgroundColor: 'rgba(100,100,200,.10)', pointRadius: 0, fill: false, tension: .35, borderWidth: 1, borderDash: [3, 3] },
+        // Banda interna P25–P75
+        { label: 'P25', data: res.p25, borderColor: 'transparent', backgroundColor: 'rgba(100,100,200,.15)', pointRadius: 0, fill: '+1', tension: .35, borderWidth: 0 },
+        { label: 'P75', data: res.p75, borderColor: 'transparent', backgroundColor: 'rgba(100,100,200,.15)', pointRadius: 0, fill: false, tension: .35, borderWidth: 0 },
+        // Mediana
+        { label: 'Mediana (P50)', data: res.p50, borderColor: '#5c6bc0', borderWidth: 2.5, pointRadius: 0, fill: false, tension: .35 },
+        // Media
+        { label: 'Media', data: res.mean, borderColor: '#9c27b0', borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, fill: false, tension: .35 },
+        // Baseline deterministica
+        { label: 'Base (crescita normale)', data: vBase, borderColor: '#1a73e8', borderWidth: 2, pointRadius: 0, fill: false, tension: .35, borderDash: [6, 3] },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          labels: {
+            font: { family: 'DM Mono', size: 11 }, boxWidth: 16,
+            filter: item => !['P10', 'P25', 'P75'].includes(item.text),
+          }
+        },
+        tooltip: {
+          callbacks: {
+            title: c => 'Età ' + c[0].label,
+            label: c => {
+              if (['P10', 'P25', 'P75'].includes(c.dataset.label)) return null;
+              return ' ' + c.dataset.label + ': ' + fmt(c.raw);
+            },
+            afterBody: items => {
+              const idx = ages.indexOf(items[0].label);
+              if (idx < 0) return [];
+              return [
+                ' ─────────────────────',
+                ' P10: ' + fmt(res.p10[idx]),
+                ' P25: ' + fmt(res.p25[idx]),
+                ' P75: ' + fmt(res.p75[idx]),
+                ' P90: ' + fmt(res.p90[idx]),
+              ];
+            }
+          },
+          filter: item => !['P10', 'P25', 'P75'].includes(item.dataset.label),
+          backgroundColor: '#fff', borderColor: '#dadce0', borderWidth: 1,
+          titleColor: '#202124', bodyColor: '#5f6368', padding: 10,
+        }
+      },
+      scales: {
+        x: { ticks: { color: tC, font: { size: 11, family: 'DM Mono' }, maxTicksLimit: 12 }, grid: { color: gC } },
+        y: { ticks: { color: tC, font: { size: 11, family: 'DM Mono' }, callback: v => fmt(v) }, grid: { color: gC } }
+      }
+    },
+    plugins: [{
+      id: 'mrOpt', afterDraw(c) {
+        const { ctx, scales: { x, y } } = c;
+        if (opt >= y.min && opt <= y.max) {
+          const yp = y.getPixelForValue(opt);
+          ctx.save(); ctx.setLineDash([6, 4]); ctx.strokeStyle = 'rgba(0,0,0,.15)'; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(x.left, yp); ctx.lineTo(x.right, yp); ctx.stroke();
+          ctx.setLineDash([]); ctx.font = '10px DM Mono,monospace'; ctx.fillStyle = 'rgba(0,0,0,.3)';
+          ctx.fillText('💎 optionality', x.left + 6, yp - 4); ctx.restore();
+        }
+      }
+    }]
+  });
+
+  // ── Heatmap regimi (barra colorata per anno) ─────────────────
+  // Mostra il regime DOMINANTE (più frequente tra i 1000 percorsi) per ogni anno.
+  const heatCells = res.dominantRegime.map((k, y) => {
+    const eco = ECO_SCENARIOS[k];
+    const freq = (res.lastResult?.globalFreq?.[k] ?? ((multiRegimeState.lastResult?.lastResult?.globalFreq ?? res.globalFreq)[k] ?? 0));
+    // Usa la frequenza in quell'anno specifico
+    return `<div title="Anno ${y + 1}: regime dominante ${eco.label}"
+                 style="flex:1;height:18px;background:${eco.color};opacity:.75;min-width:2px;cursor:default"></div>`;
+  }).join('');
+
+  // Frequenza regime per anno (per tooltip preciso) — calcolata inline
+  document.getElementById('mrHeatmap').innerHTML = `
+    <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:4px">
+      Regime dominante per anno (tra i 1000 percorsi simulati):
+    </div>
+    <div style="display:flex;gap:1px;border-radius:4px;overflow:hidden">${heatCells}</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+      ${ECO_KEYS.map(k => `<div style="display:flex;align-items:center;gap:4px;font-size:11px;font-family:'DM Mono',monospace">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${ECO_SCENARIOS[k].color}"></span>
+        ${ECO_SCENARIOS[k].emoji} ${ECO_SCENARIOS[k].label} — ${res.globalFreq[k].toFixed(1)}% del tempo
+      </div>`).join('')}
+    </div>`;
+
+  // ── Tabella percentili finale ─────────────────────────────────
+  const stp = Math.max(1, Math.floor(years / 10));
+  const tableRows = [];
+  for (let y = 0; y <= years; y += (y === 0 ? 1 : stp)) {
+    const bv    = vBase[y] ?? 0;
+    const delta = res.p50[y] - bv;
+    tableRows.push(`<tr>
+      <td><strong>${ages[y]}</strong></td>
+      <td>+${y}a</td>
+      <td style="color:var(--blue)">${fmt(bv)}</td>
+      <td style="color:#b0bec5">${fmt(res.p10[y])}</td>
+      <td style="color:#7986cb">${fmt(res.p25[y])}</td>
+      <td style="font-weight:700;color:#5c6bc0">${fmt(res.p50[y])}</td>
+      <td style="color:#7986cb">${fmt(res.p75[y])}</td>
+      <td style="color:#b0bec5">${fmt(res.p90[y])}</td>
+      <td class="${delta >= 0 ? 'pos' : 'neg'}">${delta >= 0 ? '+' : ''}${fmt(delta)}</td>
+    </tr>`);
+  }
+  // Assicura che l'anno finale sia sempre presente
+  if (years % stp !== 0) {
+    const bv    = vBase[years] ?? 0;
+    const delta = res.p50[years] - bv;
+    tableRows.push(`<tr>
+      <td><strong>${ages[years]}</strong></td>
+      <td>+${years}a</td>
+      <td style="color:var(--blue)">${fmt(bv)}</td>
+      <td style="color:#b0bec5">${fmt(res.p10[years])}</td>
+      <td style="color:#7986cb">${fmt(res.p25[years])}</td>
+      <td style="font-weight:700;color:#5c6bc0">${fmt(res.p50[years])}</td>
+      <td style="color:#7986cb">${fmt(res.p75[years])}</td>
+      <td style="color:#b0bec5">${fmt(res.p90[years])}</td>
+      <td class="${delta >= 0 ? 'pos' : 'neg'}">${delta >= 0 ? '+' : ''}${fmt(delta)}</td>
+    </tr>`);
+  }
+
+  document.getElementById('mrTable').innerHTML = `
+    <div class="tbl-outer"><table>
+      <thead><tr>
+        <th style="text-align:left">Età</th>
+        <th>Anno</th>
+        <th>Base</th>
+        <th>P10</th>
+        <th>P25</th>
+        <th>Mediana</th>
+        <th>P75</th>
+        <th>P90</th>
+        <th>Δ vs Base</th>
+      </tr></thead>
+      <tbody>${tableRows.join('')}</tbody>
+    </table></div>`;
+}
+
+// ── UI: render pannello controlli modalità auto/manuale ────────
+function renderMultiRegimeControls() {
+  const mode = multiRegimeState.mode;
+
+  // Toggle auto/manuale
+  document.querySelectorAll('#mrModeBtns .gbtn').forEach(b =>
+    b.classList.toggle('a-blue', b.dataset.mr === mode));
+
+  // Pannello auto
+  const autoPanel = document.getElementById('mrAutoPanel');
+  const manPanel  = document.getElementById('mrManualPanel');
+  if (autoPanel) autoPanel.style.display = mode === 'auto' ? '' : 'none';
+  if (manPanel)  manPanel.style.display  = mode === 'manual' ? '' : 'none';
+
+  // Aggiorna regime iniziale auto
+  document.querySelectorAll('#mrStartBtns .gbtn').forEach(b =>
+    b.classList.toggle('a-blue', b.dataset.sr === multiRegimeState.startRegime));
+
+  // Render lista sequenza manuale
+  renderManualSeqList();
+}
+
+// ── Render lista fasi sequenza manuale ───────────────────────
+function renderManualSeqList() {
+  const container = document.getElementById('mrManualList');
+  if (!container) return;
+  const seq = multiRegimeState.manualSeq;
+
+  if (!seq.length) {
+    container.innerHTML = `<div style="color:var(--text3);font-size:12.5px;padding:8px 0">
+      Nessuna fase aggiunta. Usa il pulsante + per costruire la sequenza.</div>`;
+    return;
+  }
+
+  const totalY = seq.reduce((s, f) => s + f.years, 0);
+  container.innerHTML = seq.map((f, i) => {
+    const eco = ECO_SCENARIOS[f.key];
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;margin-bottom:4px;
+                background:${eco.bg};border:1px solid ${eco.color}44;border-radius:var(--radius-sm)">
+      <span style="font-size:16px">${eco.emoji}</span>
+      <span style="flex:1;font-size:13px;font-weight:600;color:${eco.color}">${eco.label}</span>
+      <input type="number" min="1" max="40" value="${f.years}"
+             style="width:52px;font-family:'DM Mono',monospace;font-size:12px;border:1px solid var(--border2);
+                    border-radius:4px;padding:3px 6px;background:var(--bg);color:var(--text);text-align:right"
+             onchange="multiRegimeState.manualSeq[${i}].years=Math.max(1,+this.value);renderManualSeqList()">
+      <span style="font-size:11.5px;color:var(--text3)">anni</span>
+      <button class="dbtn" onclick="multiRegimeState.manualSeq.splice(${i},1);renderManualSeqList()" title="Rimuovi">✕</button>
+    </div>`;
+  }).join('');
+
+  // Totale anni e avviso se supera il piano
+  const planY = state.years;
+  const warnHtml = totalY !== planY
+    ? `<div style="font-size:11.5px;margin-top:6px;color:${totalY < planY ? 'var(--orange)' : 'var(--text3)'}">
+        Totale: <strong>${totalY} anni</strong> su ${planY} del piano.
+        ${totalY < planY ? `L\'ultimo regime si estende per i restanti ${planY - totalY} anni.` : totalY > planY ? 'La sequenza supera il piano — gli anni extra saranno ignorati.' : ''}
+      </div>`
+    : `<div style="font-size:11.5px;margin-top:6px;color:var(--green)">✓ Sequenza: ${totalY} anni = piano completo.</div>`;
+  container.insertAdjacentHTML('beforeend', warnHtml);
+}
+
+// ── Aggiunge una fase alla sequenza manuale ───────────────────
+window.mrAddPhase = function(key) {
+  multiRegimeState.manualSeq.push({ key, years: ECO_SCENARIOS[key]?.duration < 99 ? ECO_SCENARIOS[key].duration : 5 });
+  renderManualSeqList();
+};
+
+// ── Init sezione multi-regime (chiamato da switchTab) ─────────
+window.initMultiRegime = function() {
+  renderMultiRegimeControls();
+  // Non lancia subito la simulazione — aspetta che l'utente prema "Lancia"
+  // per evitare calcolo automatico ogni volta che si apre la tab
+  const resultArea = document.getElementById('mrResults');
+  if (resultArea && !multiRegimeState.lastResult) {
+    resultArea.style.display = 'none';
+    document.getElementById('mrPlaceholder').style.display = '';
+  }
+};
+
+// ── Lancia la simulazione (bottone) ──────────────────────────
+window.launchMultiRegime = function() {
+  document.getElementById('mrPlaceholder').style.display = 'none';
+  document.getElementById('mrResults').style.display = '';
+  renderMultiRegime();
+};
+
+// ══════════════════════════════════════════════════════════════
 // TAB A/B
 // ══════════════════════════════════════════════════════════════
 let chartAB = null;
