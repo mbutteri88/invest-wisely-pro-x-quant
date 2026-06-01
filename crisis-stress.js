@@ -420,17 +420,26 @@ function renderCrisis(crisisId) {
   // I preset con leva / managed futures non hanno serie storica coerente:
   // lo stress test storico li modellerebbe come un semplice mix az/obbl/oro,
   // ignorando leva e trend. Mostra un avviso invece di numeri fuorvianti.
+  // Stessa cosa per il portafoglio custom che include Trend Following / Carry.
   const NON_BACKTESTABLE = { ec_us_9060: 1, ec_glob_9060: 1, return_stack: 1 };
-  if (NON_BACKTESTABLE[portKey]) {
+  const isCustomNonBT = portKey === 'custom' &&
+    (typeof customPortfolioIsNonBacktestable === 'function') &&
+    customPortfolioIsNonBacktestable();
+  if (NON_BACKTESTABLE[portKey] || isCustomNonBT) {
     const lbl = typeof getPortLabel === 'function' ? getPortLabel(portKey) : portKey;
     const ctx0 = document.getElementById('crisisContext');
     if (ctx0) {
       ctx0.style.background = 'rgba(230,138,0,.08)';
       ctx0.style.borderColor = 'rgba(230,138,0,.35)';
       ctx0.innerHTML = `<div style="font-size:13px;font-weight:700;color:#b8860b;margin-bottom:6px">Stress test non disponibile — ${lbl}</div>` +
-        `<div style="font-size:12.5px;line-height:1.6;color:var(--text2)">Questa strategia usa leva (esposizione &gt;100%) e/o managed futures, ` +
-        `asset privi di serie storica coerente in questo modello (i dati storici coprono solo azioni, obbligazioni e oro). ` +
-        `Usa le schede <strong>Simulatore</strong> o <strong>Monte Carlo</strong>, che modellano correttamente leva e diversificazione.</div>`;
+        (isCustomNonBT
+          ? `<div style="font-size:12.5px;line-height:1.6;color:var(--text2)">Il portafoglio custom include <strong>Trend Following / Managed Futures</strong> o <strong>Carry</strong>, ` +
+            `asset privi di serie storica coerente in questo modello (i dati storici coprono solo azioni, obbligazioni e oro). ` +
+            `Senza blocco questi asset verrebbero modellati erroneamente come obbligazionario, producendo risultati fuorvianti. ` +
+            `Usa le schede <strong>Simulatore</strong> o <strong>Monte Carlo</strong>.</div>`
+          : `<div style="font-size:12.5px;line-height:1.6;color:var(--text2)">Questa strategia usa leva (esposizione &gt;100%) e/o managed futures, ` +
+            `asset privi di serie storica coerente in questo modello (i dati storici coprono solo azioni, obbligazioni e oro). ` +
+            `Usa le schede <strong>Simulatore</strong> o <strong>Monte Carlo</strong>, che modellano correttamente leva e diversificazione.</div>`);
     }
     ['crisisMetrics','crisisWorstMonths'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
     const cmp = document.getElementById('crisisCompareSection'); if (cmp) cmp.style.display = 'none';

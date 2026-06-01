@@ -861,6 +861,14 @@ function getRate(key, scenario, year, startAge) {
 // del regime SOLO per gli anni di durata storica dello scenario; oltre quella
 // soglia ritorna al baseline "Crescita Normale", indipendentemente dalla
 // durata totale dell'investimento dell'utente.
+//
+// COERENZA CON getRate(): in regime "normale" (eco === NORMAL_ECO, tutti i
+// moltiplicatori = 1) il risultato coincide ESATTAMENTE con getRate() per
+// qualsiasi portafoglio, inclusi golden_butterfly, permanent, all_seasons,
+// larry e i portafogli a leva (ec_us_9060, ec_glob_9060, return_stack).
+// Metodo: si parte da muNormal (fonte di verita calibrata), si calcola il
+// delta di regime come scostamento relativo ponderato sui pesi normalizzati,
+// e si aggiunge il delta. In regime normale delta=0 quindi identico a getRate().
 function getRateEco(portKey, ecoKey, year, startAge, ecoWin) {
   const ecoSel = ECO_SCENARIOS[ecoKey];
   const p = portKey === 'custom' ? calcCustomParams() : PORT[portKey];
@@ -871,30 +879,58 @@ function getRateEco(portKey, ecoKey, year, startAge, ecoWin) {
     : (year <= (ecoSel.duration ?? 99));
   const eco = inRegime ? ecoSel : NORMAL_ECO;
 
+  // FX cost coerente con getRate()
+  const fxExpPort = portKey === 'custom'
+    ? (p.fxExposure ?? p.fxExp ?? 0)
+    : (PORT[portKey]?.fxExp ?? 0);
+  const fxCostEco = (!!state.fxHedge && fxExpPort > 0) ? fxExpPort * state.fxHedgeCost : 0;
+
+  // Lifecycle: stessa logica di getRate()
   if (portKey === 'lifecycle') {
     const age = startAge + year;
     const eqW = getLCWeight(age);
     const obW = 1 - eqW;
-    const baseEq = 0.07, baseOb = 0.03;
-    return eqW * baseEq * eco.eqMult + obW * baseOb * eco.obMult;
+    const muEq = 0.07, muOb = 0.03;
+    const muNormalLC = eqW * muEq + obW * muOb;
+    const wSum = eqW + obW || 1;
+    const deltaEco = (eqW * muEq * (eco.eqMult - 1) + obW * muOb * (eco.obMult - 1)) / wSum;
+    return muNormalLC + deltaEco - fxCostEco;
   }
 
+  // Portafogli predefiniti e custom
+  // muNormal e la fonte di verita: coincide con getRate() in regime normale.
+  const muNormal = portKey === 'custom'
+    ? (p.normal ?? p.normalR ?? 0.055)
+    : (PORT[portKey]?.normal ?? 0.055);
+
+  // Pesi nominali del portafoglio (possono sommare >1 per portafogli a leva)
   const eqW   = Math.max(0, p.eq   ?? getEquityWeight(portKey, startAge + year));
   const goldW = Math.max(0, p.gold ?? getGoldWeight(portKey));
   const cashW = Math.max(0, p.cash ?? getCashWeight(portKey));
   const obW   = Math.max(0, p.ob   ?? Math.max(0, 1 - eqW - goldW - cashW));
-  // Normalizza in modo che i pesi sommino a 1 (rilevante per leva implicita)
+  // Normalizza i pesi a 1 per calcolare i contributi relativi al delta di regime.
+  // Per portafogli a leva (wSum > 1) questo rispecchia la sensibilita relativa
+  // di ciascuna asset class al ciclo economico, senza amplificare il delta.
   const wSum = eqW + obW + goldW + cashW || 1;
 
-  const baseEq = 0.07, baseOb = 0.03, baseGold = 0.04;
-  const rateBase = (eqW   * baseEq   * eco.eqMult
-                  + obW   * baseOb   * eco.obMult
-                  + goldW * baseGold * eco.goldMult
-                  + cashW * eco.cashRet) / wSum;
-  // Correggi per hedging FX (costo) anche negli scenari economici
-  const fxExpPort = portKey === 'custom' ? (calcCustomParams().fxExposure ?? 0) : (PORT[portKey]?.fxExp ?? 0);
-  const fxCostEco = (!!state.fxHedge && fxExpPort > 0) ? fxExpPort * state.fxHedgeCost : 0;
-  return rateBase - fxCostEco;
+  // Rendimenti "anchor" per il calcolo del delta: valori medi coerenti con
+  // i portafogli semplici (eq100 -> 7%, ob100 -> 3%, gold puro -> 4%).
+  const anchorEq = 0.07, anchorOb = 0.03, anchorGold = 0.04, anchorCash = 0.025;
+  // Delta di regime: scostamento RELATIVO rispetto al regime NORMALE. Ogni
+  // moltiplicatore è confrontato col valore che ha in NORMAL_ECO (non con 1):
+  // così in regime normale ogni termine è 0 -> delta 0 -> getRateEco = muNormal
+  // = getRate(). Necessario perché NORMAL_ECO non ha tutti i mult = 1 (es.
+  // goldMult = 0.7, cashRet = 0.02): confrontare con 1 lasciava un residuo sui
+  // portafogli ricchi di oro/liquidità (permanent, golden butterfly, all seasons).
+  const nrm = NORMAL_ECO;
+  const deltaEco = (
+      eqW   * anchorEq   * (eco.eqMult   - nrm.eqMult)
+    + obW   * anchorOb   * (eco.obMult   - nrm.obMult)
+    + goldW * anchorGold * (eco.goldMult - nrm.goldMult)
+    + cashW * ((eco.cashRet ?? nrm.cashRet) - nrm.cashRet)
+  ) / wSum;
+
+  return muNormal + deltaEco - fxCostEco;
 }
 
 function getPortfolioVol(portKey, age) {
@@ -3016,6 +3052,53 @@ function bindSlider(sid, lid, key, fmtFn, cb) {
 }
 bindSlider('sW', 'lW', 'w', v => '€' + fmtN(v));
 bindSlider('sP', 'lP', 'pac', v => '€' + fmtN(v) + '/m');
+
+// ── Valore digitabile da tastiera: clic sulla label → input numerico ──
+// Rende il valore mostrato (span .pval) cliccabile: si apre un campo dove
+// scrivere la cifra esatta. Alla conferma (Invio o blur) il valore viene
+// limitato al range dello slider, sincronizzato con slider+stato, e il
+// grafico si aggiorna. Esc annulla. Funziona per qualsiasi slider numerico.
+function makeEditable(labelId, sliderId, stateKey, fmtFn, opts) {
+  opts = opts || {};
+  const lab = document.getElementById(labelId);
+  const sld = document.getElementById(sliderId);
+  if (!lab || !sld) return;
+  lab.style.cursor = 'text';
+  lab.title = 'Clicca per scrivere il valore';
+  lab.addEventListener('click', () => {
+    if (lab.querySelector('input')) return;           // già in modifica
+    const cur = +sld.value;
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.inputMode = 'numeric';
+    inp.value = cur;                                   // numero grezzo, niente € o punti
+    inp.style.cssText = 'width:9ch;font:inherit;color:inherit;background:var(--bg2,#1a1a1a);border:1px solid var(--blue,#1a73e8);border-radius:5px;padding:1px 5px;text-align:right';
+    const oldHTML = lab.innerHTML;
+    lab.innerHTML = '';
+    lab.appendChild(inp);
+    inp.focus(); inp.select();
+    const commit = () => {
+      // estrai solo le cifre (tollera punti, spazi, € incollati).
+      // Un eventuale segno meno iniziale → valore 0 (importi negativi non hanno senso).
+      const negative = /^\s*-/.test(String(inp.value));
+      let n = negative ? 0 : parseInt(String(inp.value).replace(/[^\d]/g, ''), 10);
+      if (isNaN(n)) n = cur;
+      const min = +sld.min, max = +sld.max, step = +sld.step || 1;
+      n = Math.max(min, Math.min(max, n));             // clamp al range
+      n = Math.round(n / step) * step;                 // allinea allo step
+      sld.value = n;
+      sld.dispatchEvent(new Event('input', { bubbles: true })); // riusa bindSlider
+    };
+    const cancel = () => { lab.innerHTML = oldHTML; };
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    });
+    inp.addEventListener('blur', commit);
+  });
+}
+makeEditable('lW', 'sW', 'w');
+makeEditable('lP', 'sP', 'pac');
 bindSlider('sA', 'lA', 'age', v => v + ' anni');
 bindSlider('sY', 'lY', 'years', v => v + ' anni');
 bindSlider('sO', 'lO', 'opt', v => '€' + fmtN(v));

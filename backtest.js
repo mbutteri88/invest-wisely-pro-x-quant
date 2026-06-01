@@ -422,6 +422,20 @@ function simulateBacktest(portKey, startYear, pacMonthly, w0, skipEvents) {
   };
 }
 
+// ── Helper: rileva se il portafoglio custom include Trend Following / Carry ──────
+// fat_trend (Managed Futures) e fat_carry_* non hanno serie storica coerente
+// in HIST_MONTHLY (che copre solo azioni/obbligazioni/oro). Senza blocco, questi
+// asset verrebbero simulati implicitamente come obbligazionario (obW = residuo),
+// perdendo completamente il crisis alpha / la decorrelazione che ne giustificano l'uso.
+function customPortfolioIsNonBacktestable() {
+  if (state.portfolio !== 'custom') return false;
+  const NON_BT_CATS = new Set(['trend', 'carry']);
+  return (state.customPortfolio?.slots || []).some(sl => {
+    const ac = ASSET_CLASSES[sl.ac];
+    return Number(sl.pct) > 0 && ac && NON_BT_CATS.has(ac.cat);
+  });
+}
+
 function runBacktest() {
   const { startYear, port, pac, w } = btState;
   const portKey = port === 'sim' ? state.portfolio : port;
@@ -430,8 +444,9 @@ function runBacktest() {
   // non sono backtestabili sulla serie storica: HIST_MONTHLY contiene solo
   // azioni/obbligazioni/oro (manca il managed futures), la leva verrebbe
   // ignorata, e gli strumenti UCITS non esistevano nelle finestre storiche.
+  // Stessa cosa per il portafoglio custom che include Trend Following / Carry.
   const NON_BACKTESTABLE = { ec_us_9060: 1, ec_glob_9060: 1, return_stack: 1 };
-  if (NON_BACKTESTABLE[portKey]) {
+  if (NON_BACKTESTABLE[portKey] || (portKey === 'custom' && customPortfolioIsNonBacktestable())) {
     document.getElementById('btResults').style.display = 'block';
     document.getElementById('btCompareSec').style.display = 'none';
     const lbl = (typeof getPortLabel === 'function') ? getPortLabel(portKey) : portKey;
@@ -440,13 +455,19 @@ function runBacktest() {
     box.style.background = 'var(--orange-dim, rgba(230,138,0,.08))';
     box.style.border = '1px solid rgba(230,138,0,.35)';
     box.style.color = 'var(--orange, #b8860b)';
-    box.innerHTML = `Il backtest storico non è applicabile a <strong>${lbl}</strong>. ` +
-      `Questa strategia usa leva (esposizione &gt;100%) e/o managed futures, ` +
-      `asset per cui non esiste una serie storica coerente in questo modello ` +
-      `(i dati storici coprono solo azioni, obbligazioni e oro). ` +
-      `Inoltre gli strumenti UCITS che la compongono non esistevano nelle finestre storiche. ` +
-      `Per analizzare questa strategia usa le schede <strong>Simulatore</strong>, ` +
-      `<strong>Monte Carlo</strong> o <strong>Frontiera Efficiente</strong>, che modellano correttamente leva e diversificazione.`;
+    const isCustomMF = portKey === 'custom' && customPortfolioIsNonBacktestable();
+    box.innerHTML = isCustomMF
+      ? `Il portafoglio custom include <strong>Trend Following / Managed Futures</strong> o <strong>Carry</strong>, ` +
+        `asset privi di serie storica coerente in questo modello (i dati storici coprono solo azioni, obbligazioni e oro). ` +
+        `Senza blocco questi asset verrebbero modellati erroneamente come obbligazionario, producendo risultati fuorvianti. ` +
+        `Usa le schede <strong>Simulatore</strong>, <strong>Monte Carlo</strong> o <strong>Frontiera Efficiente</strong>.`
+      : `Il backtest storico non è applicabile a <strong>${lbl}</strong>. ` +
+        `Questa strategia usa leva (esposizione &gt;100%) e/o managed futures, ` +
+        `asset per cui non esiste una serie storica coerente in questo modello ` +
+        `(i dati storici coprono solo azioni, obbligazioni e oro). ` +
+        `Inoltre gli strumenti UCITS che la compongono non esistevano nelle finestre storiche. ` +
+        `Per analizzare questa strategia usa le schede <strong>Simulatore</strong>, ` +
+        `<strong>Monte Carlo</strong> o <strong>Frontiera Efficiente</strong>, che modellano correttamente leva e diversificazione.`;
     // Svuota/nascondi le sezioni dei risultati da eventuali run precedenti
     const statsEl = document.getElementById('btStats');       if (statsEl) statsEl.innerHTML = '';
     const ddSec   = document.getElementById('btDrawdownSec');  if (ddSec)   ddSec.style.display = 'none';
@@ -789,9 +810,9 @@ function runAllBacktests() {
   // Run backtesting for all start years and compare
   const portKey = btState.port === 'sim' ? state.portfolio : btState.port;
   // Stessa esclusione di runBacktest: i preset con leva / managed futures non
-  // sono backtestabili sulla serie storica.
+  // sono backtestabili sulla serie storica. Idem per custom con Trend / Carry.
   const NON_BACKTESTABLE = { ec_us_9060: 1, ec_glob_9060: 1, return_stack: 1 };
-  if (NON_BACKTESTABLE[portKey]) {
+  if (NON_BACKTESTABLE[portKey] || (portKey === 'custom' && customPortfolioIsNonBacktestable())) {
     document.getElementById('btResults').style.display = 'block';
     document.getElementById('btCompareSec').style.display = 'none';
     const lbl = (typeof getPortLabel === 'function') ? getPortLabel(portKey) : portKey;
@@ -800,9 +821,15 @@ function runAllBacktests() {
     box.style.background = 'var(--orange-dim, rgba(230,138,0,.08))';
     box.style.border = '1px solid rgba(230,138,0,.35)';
     box.style.color = 'var(--orange, #b8860b)';
-    box.innerHTML = `Il backtest storico non è applicabile a <strong>${lbl}</strong>: ` +
-      `usa leva e/o managed futures, asset senza serie storica coerente in questo modello. ` +
-      `Usa le schede <strong>Simulatore</strong>, <strong>Monte Carlo</strong> o <strong>Frontiera Efficiente</strong>.`;
+    const isCustomMF2 = portKey === 'custom' && customPortfolioIsNonBacktestable();
+    box.innerHTML = isCustomMF2
+      ? `Il portafoglio custom include <strong>Trend Following / Managed Futures</strong> o <strong>Carry</strong>, ` +
+        `asset privi di serie storica coerente in questo modello (i dati storici coprono solo azioni, obbligazioni e oro). ` +
+        `Senza blocco questi asset verrebbero modellati erroneamente come obbligazionario, producendo risultati fuorvianti. ` +
+        `Usa le schede <strong>Simulatore</strong>, <strong>Monte Carlo</strong> o <strong>Frontiera Efficiente</strong>.`
+      : `Il backtest storico non è applicabile a <strong>${lbl}</strong>: ` +
+        `usa leva e/o managed futures, asset senza serie storica coerente in questo modello. ` +
+        `Usa le schede <strong>Simulatore</strong>, <strong>Monte Carlo</strong> o <strong>Frontiera Efficiente</strong>.`;
     const statsEl = document.getElementById('btStats');      if (statsEl) statsEl.innerHTML = '';
     const ddSec   = document.getElementById('btDrawdownSec'); if (ddSec)   ddSec.style.display = 'none';
     return;
