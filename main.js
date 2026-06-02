@@ -2492,7 +2492,7 @@ function simulateDecumulo(sc) {
     if (inEcoRegime && y === ecoWin.s) note = ECO_SCENARIOS[ecoScenario].emoji + ' regime attivo';
     if (ecoWin && y === ecoWin.e + 1) note = '↩ ritorno normale';
     if (strat === 'fixed') { nextWd = wd; }
-    else if (strat === 'inflation') { if (y > 1) { nextWd = wd * (1 + inflRate); if (!note && infl > 0) note = `+${infl.toFixed(1)}% inflaz.`; } }
+    else if (strat === 'inflation') { nextWd = wd * (1 + inflRate); if (!note && infl > 0 && y > 1) note = `+${infl.toFixed(1)}% inflaz.`; }
     else if (strat === 'gk') {
       const currentRate = cW > 0 ? wd / cW : Infinity;
       const portfolioRuleBlocks = prevReturn !== null && prevReturn < 0;
@@ -3119,7 +3119,19 @@ bindDecSlider('sDecY', 'lDecY', 'years', v => v + ' anni');
 bindDecSlider('sDecTer', 'lDecTer', 'ter', v => v.toFixed(2) + '%');
 bindDecSlider('sDecI', 'lDecI', 'inflation', v => v.toFixed(1) + '%');
 
-document.getElementById('decAllocBtns').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; decState.portfolio = b.dataset.k; document.querySelectorAll('#decAllocBtns .gbtn').forEach(x => x.classList.remove('a-blue')); b.classList.add('a-blue'); renderDecumulo(); };
+document.getElementById('decAllocBtns').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; decState.portfolio = b.dataset.k; document.querySelectorAll('#decAllocBtns .gbtn').forEach(x => x.classList.remove('a-blue')); b.classList.add('a-blue'); 
+  // Avviso se si sceglie "Mia allocazione" ma il Simulatore non ha un'allocazione custom configurata
+  const decAllocWarn = document.getElementById('decAllocWarn');
+  if (decAllocWarn) {
+    const slots = (state.customPortfolio?.slots || []).filter(s => s.ac && s.pct > 0);
+    if (b.dataset.k === 'custom' && slots.length === 0) {
+      decAllocWarn.style.display = 'block';
+      decAllocWarn.innerHTML = '⚠️ Non hai ancora configurato un\'allocazione personalizzata nella scheda Simulatore. Vai al Simulatore, scegli "Allocazione personalizzata" e imposta gli asset, poi torna qui.';
+    } else {
+      decAllocWarn.style.display = 'none';
+    }
+  }
+  renderDecumulo(); };
 document.getElementById('decStratBtns').onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; decState.strategy = b.dataset.s; document.querySelectorAll('#decStratBtns .gbtn').forEach(x => x.classList.remove('a-blue')); b.classList.add('a-blue'); document.getElementById('decStratDesc').innerHTML = decStratDescs[b.dataset.s] || ''; renderDecumulo(); };
 
 // Eco timing — Scenari tab
