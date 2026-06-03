@@ -335,42 +335,50 @@ function computeEfficientFrontier(acKeys, ter, nPoints) {
 
   const muMin = Math.min(...mus) - (ter||0)/100;  // range aggiustato per TER
   const muMax = Math.max(...mus) - (ter||0)/100;
-
-  // Per ogni livello di rendimento target, trova il portafoglio a minima varianza
-  // usando Monte Carlo + selezione locale. Veloce e sufficientemente preciso.
-  const frontier = [];
   const muRange = muMax - muMin;
 
-  // Genera molti portafogli casuali come seed
-  const N_RANDOM = 4000;
+  // Genera molti portafogli casuali come seed (più campioni = frontiera più liscia)
+  const N_RANDOM = 12000;
   const randomPortfolios = [];
   for (let k=0;k<N_RANDOM;k++) {
     const w = _randomWeights(n);
-    const mu = portfolioMu(w, acKeys, ter);           // FIX: era ter*n (moltiplicato x n per errore)
+    const mu = portfolioMu(w, acKeys, ter);
     const vol = Math.sqrt(Math.max(0, portfolioVar(w, acKeys)));
-    randomPortfolios.push({w, mu, vol, sharpe: (mu - 0.025) / (vol||0.001)});  // FIX: era RF=0.02, ora 0.025
+    randomPortfolios.push({ mu, vol, weights: w, sharpe: (mu - RF_RATE) / (vol||0.001) });
   }
 
-  // Per ogni target mu, trova il portafoglio a volatilità minima
+  // Per ogni livello di rendimento target, trova il portafoglio a volatilità minima.
+  const raw = [];
   for (let t=0;t<=nPoints;t++) {
     const targetMu = muMin + (t/nPoints) * muRange;
-    const tolerance = muRange * 0.04;
-    const candidates = randomPortfolios.filter(p =>
-      Math.abs(p.mu - targetMu) < tolerance
-    );
-    if (!candidates.length) continue;
-    candidates.sort((a,b) => a.vol - b.vol);
-    const best = candidates[0];
-    frontier.push({
-      mu: best.mu,
-      vol: best.vol,
-      sharpe: best.sharpe,
-      weights: best.w,
-    });
+    const tolerance = muRange * 0.03 + 1e-4;
+    let best = null;
+    for (const p of randomPortfolios) {
+      if (Math.abs(p.mu - targetMu) >= tolerance) continue;
+      if (!best || p.vol < best.vol) best = p;
+    }
+    if (best) raw.push(best);
   }
 
-  // Rimuovi duplicati e ordina per volatilità crescente
-  frontier.sort((a,b) => a.vol - b.vol);
+  // ── Filtro di DOMINANZA (inviluppo efficiente) ───────────────────────────────
+  // Una vera frontiera efficiente è monotòna nel ramo superiore: a maggior rischio
+  // deve corrispondere maggior rendimento. Il Monte Carlo produce però una nuvola
+  // con punti "dominati" (stesso/maggior rischio ma rendimento minore di un altro),
+  // che disegnati creano lo zig-zag. Qui ordiniamo per volatilità crescente e
+  // teniamo SOLO i punti il cui rendimento supera il massimo già visto: questo è
+  // l'upper-left envelope, ovvero la frontiera efficiente in senso stretto.
+  raw.sort((a,b) => a.vol - b.vol || b.mu - a.mu);
+  const frontier = [];
+  let maxMuSoFar = -Infinity;
+  for (const p of raw) {
+    if (p.mu > maxMuSoFar + 1e-6) {
+      // evita duplicati quasi-coincidenti
+      const last = frontier[frontier.length-1];
+      if (last && Math.abs(last.vol - p.vol) < 1e-5 && Math.abs(last.mu - p.mu) < 1e-5) continue;
+      frontier.push({ mu: p.mu, vol: p.vol, sharpe: p.sharpe, weights: p.weights });
+      maxMuSoFar = p.mu;
+    }
+  }
   return frontier;
 }
 
