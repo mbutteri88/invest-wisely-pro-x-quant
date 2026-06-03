@@ -386,7 +386,23 @@ function recalibratePortfolios(data) {
   // Rendimento azionario "sviluppati" globale = media ponderata USA(65%) + EU(25%) + altro(10%)
   const muEqDev  = 0.65 * muEqUSA + 0.25 * muEqEU + 0.10 * BASE.eq_em;
 
-  // Ricalibra ogni portafoglio usando la composizione reale eq/ob
+  // ── Versione "storica" degli stessi aggregati (input = BASE, nessun CAPE) ──
+  // Serve a calcolare l'effetto CAPE come DELTA con metodo identico, così il
+  // confronto storico↔CAPE-adj isola SOLO l'impatto delle valutazioni e non
+  // mischia due metodologie diverse (parametri PORT calibrati vs ricostruzione).
+  const muEqDevHist = 0.65 * BASE.eq_usa + 0.25 * BASE.eq_eu + 0.10 * BASE.eq_em;
+  const muBondHist  = BASE.bond_eur;
+
+  const goldBase = 0.040; // oro: no CAPE, usa storico
+  const cashBase = 0.020; // liquidità ~2%
+  const trendBase = 0.050; // managed futures: rendimento atteso ~5%, indipendente da CAPE
+
+  // Ricalibra ogni portafoglio applicando il DELTA CAPE ai valori PORT calibrati.
+  // μ_cape(port)   = Σ wᵢ·rᵢ_cape / Σwᵢ   (ricostruzione con forward live)
+  // μ_hist(port)   = Σ wᵢ·rᵢ_hist / Σwᵢ   (ricostruzione con rendimenti storici)
+  // delta          = μ_cape − μ_hist      (puro effetto valutazioni, stesso metodo)
+  // p.normal       = p._baseNormal + delta (ancora al valore calibrato a mano)
+  // In regime storico (delta=0) p.normal resta esattamente = _baseNormal calibrato.
   const recalib = (portKey) => {
     const p = PORT[portKey];
     if (!p || portKey === 'lifecycle' || portKey === 'custom') return;
@@ -395,48 +411,61 @@ function recalibratePortfolios(data) {
     const goldW = p.gold ?? 0;
     const cashW = p.cash ?? 0;
     const trendW = p.trend ?? 0; // trend following (return stacking): diversificatore
-    const goldBase = 0.040; // oro: no CAPE, usa storico
-    const cashBase = 0.020; // liquidità ~2%
-    const trendBase = 0.050; // managed futures: rendimento atteso ~5%, indipendente da CAPE
 
-    // Normalizza pesi (alcuni portfolio usano leva implicita)
-    const wSum = eqW + obW + goldW + cashW + trendW || 1;
-    const muNew = (eqW * muEqDev + obW * muBond + goldW * goldBase + cashW * cashBase + trendW * trendBase) / wSum;
-
-    // Mantieni la struttura distribuzionale (spread best-worst) proporzionale
-    const muOld = p._baseNormal ?? p.normal; // salva originale
-    if (!p._baseNormal) {
+    // Salva i valori PORT calibrati a mano (baseline storica affidabile)
+    if (p._baseNormal == null) {
       p._baseNormal = p.normal;
       p._baseBest   = p.best;
       p._baseWorst  = p.worst;
     }
+
+    // Normalizza pesi (alcuni portfolio usano leva implicita, wSum>1)
+    const wSum = eqW + obW + goldW + cashW + trendW || 1;
+    // Solo le componenti sensibili al CAPE (azioni e bond) cambiano tra le due
+    // versioni; oro/cash/trend sono identiche e quindi NON contribuiscono al delta.
+    const muCape = (eqW * muEqDev     + obW * muBond     + goldW * goldBase + cashW * cashBase + trendW * trendBase) / wSum;
+    const muHist = (eqW * muEqDevHist + obW * muBondHist + goldW * goldBase + cashW * cashBase + trendW * trendBase) / wSum;
+    const delta  = muCape - muHist; // puro effetto valutazioni, metodo coerente
+
     const spreadBest  = p._baseBest  - p._baseNormal;
     const spreadWorst = p._baseNormal - p._baseWorst;
 
-    p.normal = Math.max(0.005, Math.min(0.14, muNew));
+    // Applica il delta al valore calibrato (non sostituisce il metodo)
+    p.normal = Math.max(0.005, Math.min(0.14, p._baseNormal + delta));
     p.best   = Math.min(0.20, p.normal + spreadBest);
     p.worst  = Math.max(-0.08, p.normal - spreadWorst);
   };
 
   Object.keys(PORT).forEach(recalib);
 
-  // Ricalibra anche ASSET_CLASSES per portafoglio custom
-  // Salva base ASSET_CLASSES prima di sovrascrivere (usato da restoreBasePortfolios)
+  // Ricalibra anche ASSET_CLASSES per portafoglio custom — con lo STESSO metodo
+  // delta: mu = _baseMu + (μ_cape − μ_storico). Così un custom in modalità storica
+  // mantiene i mu calibrati delle asset class, e in CAPE-adj riceve solo lo
+  // scostamento dovuto alle valutazioni, coerente coi preset.
   const _acKeys = ['eq_usa','eq_sviluppati','eq_europa','ob_glob_agg','ob_glob_gov','ob_usa_ult'];
   _acKeys.forEach(k => { if (ASSET_CLASSES[k] && ASSET_CLASSES[k]._baseMu == null) ASSET_CLASSES[k]._baseMu = ASSET_CLASSES[k].mu; });
 
-  if (ASSET_CLASSES.eq_usa)       ASSET_CLASSES.eq_usa.mu       = Math.max(0.02, Math.min(0.14, muEqUSA));
-  if (ASSET_CLASSES.eq_sviluppati) ASSET_CLASSES.eq_sviluppati.mu = Math.max(0.02, Math.min(0.14, muEqDev));
-  if (ASSET_CLASSES.eq_europa)    ASSET_CLASSES.eq_europa.mu     = Math.max(0.02, Math.min(0.14, muEqEU));
-  if (ASSET_CLASSES.ob_glob_agg)  ASSET_CLASSES.ob_glob_agg.mu  = Math.max(0.005, Math.min(0.10, muBond));
-  if (ASSET_CLASSES.ob_glob_gov)  ASSET_CLASSES.ob_glob_gov.mu  = Math.max(0.005, Math.min(0.09, muBond * 0.90));
-  if (ASSET_CLASSES.ob_usa_ult)   ASSET_CLASSES.ob_usa_ult.mu   = Math.max(0.005, Math.min(0.10, liveBond * 1.05));
+  // Delta per ogni aggregato (forward CAPE − storico di riferimento)
+  const dEqUSA = muEqUSA - BASE.eq_usa;
+  const dEqDev = muEqDev - muEqDevHist;
+  const dEqEU  = muEqEU  - BASE.eq_eu;
+  const dBond  = muBond  - BASE.bond_eur;
 
-  console.info('[LiveData] Portafogli ricalibrati:', {
-    muEqUSA: (muEqUSA*100).toFixed(2)+'%',
-    muEqEU:  (muEqEU*100).toFixed(2)+'%',
-    muBond:  (muBond*100).toFixed(2)+'%',
-    muEqDev: (muEqDev*100).toFixed(2)+'%',
+  const applyDelta = (k, delta, lo, hi) => {
+    const ac = ASSET_CLASSES[k];
+    if (ac && ac._baseMu != null) ac.mu = Math.max(lo, Math.min(hi, ac._baseMu + delta));
+  };
+  applyDelta('eq_usa',       dEqUSA, 0.02, 0.14);
+  applyDelta('eq_sviluppati', dEqDev, 0.02, 0.14);
+  applyDelta('eq_europa',    dEqEU,  0.02, 0.14);
+  applyDelta('ob_glob_agg',  dBond,  0.005, 0.10);
+  applyDelta('ob_glob_gov',  dBond,  0.005, 0.09);
+  applyDelta('ob_usa_ult',   dBond,  0.005, 0.10);
+
+  console.info('[LiveData] Portafogli ricalibrati (delta CAPE):', {
+    dEqUSA: (dEqUSA*100).toFixed(2)+'%',
+    dEqDev: (dEqDev*100).toFixed(2)+'%',
+    dBond:  (dBond*100).toFixed(2)+'%',
   });
 }
 

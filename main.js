@@ -683,7 +683,7 @@ let state = {
   fxHedge: false,        // se true, copertura cambio attiva (costo ~0.3%/a)
   fxVol: 0.085,          // volatilità storica EUR/USD ~8.5%/a (1999-2024)
   fxHedgeCost: 0.003,    // costo annuo della copertura valutaria ~0.3%
-  capeAdj: true,         // se true, rendimenti ricalibrati con CAPE live (blend 55/45)
+  capeAdj: true,         // se true: baseline + scostamento da CAPE/yield live (metodo delta coerente)
 };
 let stateB = { portfolio: 'eq50', ter: .20, pac: -1 };
 let decState = { portfolio: 'eq60', strategy: 'inflation', startPortfolio: 500000, withdrawal: 20000, years: 30, inflation: 2.0, ter: .20, ecoScenario: null, ecoTiming: 'early' };
@@ -2800,6 +2800,7 @@ function importFromSim() {
   decState.startPortfolio = dN[state.years].value;
   document.getElementById('sDecStart').value = Math.min(decState.startPortfolio, 5000000);
   document.getElementById('lDecStart').textContent = fmt(decState.startPortfolio);
+  document.getElementById('sDecStart').dispatchEvent(new Event('input', { bubbles: true }));
   document.getElementById('importStatus').textContent = `Importato: ${fmtFull(decState.startPortfolio)} (scenario base, età ${state.age + state.years} anni)`;
   renderDecumulo();
 }
@@ -3127,6 +3128,85 @@ function makeEditable(labelId, sliderId, stateKey, fmtFn, opts) {
 }
 makeEditable('lW', 'sW', 'w');
 makeEditable('lP', 'sP', 'pac');
+
+// ── Campo numerico digitabile accanto agli slider di importo ──────────────
+// Inserisce un <input type="number"> sincronizzato bidirezionalmente con lo
+// slider: digitare aggiorna lo slider (e dispatcha 'input', riusando tutta la
+// logica esistente di bindSlider/oninput); muovere lo slider aggiorna il campo.
+// Pensato per importi elevati (milioni) dove il trascinamento è impreciso.
+// withEuro=true mostra il prefisso €. Allinea allo step e limita al range solo
+// al blur/Invio, così durante la digitazione non si "salta".
+function attachNumberBox(sliderId, withEuro = true) {
+  const sld = document.getElementById(sliderId);
+  if (!sld || sld._numBoxAttached) return;
+  sld._numBoxAttached = true;
+
+  const wrap = document.createElement('div');
+  wrap.className = withEuro ? 'num-box-wrap' : '';
+  const box = document.createElement('input');
+  box.type = 'number';
+  box.className = 'num-box';
+  box.min = sld.min; box.max = sld.max; box.step = sld.step;
+  box.setAttribute('inputmode', 'numeric');
+  box.value = sld.value;
+  box.setAttribute('aria-label', 'Inserisci il valore esatto');
+  wrap.appendChild(box);
+  sld._numBox = box; // riferimento per sincronizzazione programmatica
+  // Inserisce subito dopo lo slider (o dopo gli hint di range se presenti)
+  const hints = sld.nextElementSibling && sld.nextElementSibling.classList?.contains('range-hints')
+    ? sld.nextElementSibling : null;
+  (hints || sld).insertAdjacentElement('afterend', wrap);
+
+  // slider → box
+  const syncFromSlider = () => { if (document.activeElement !== box) box.value = sld.value; };
+  sld.addEventListener('input', syncFromSlider);
+
+  // box → slider (in tempo reale mentre si digita, senza clamp brusco)
+  box.addEventListener('input', () => {
+    if (box.value === '' || box.value === '-') return;       // consente digitazione parziale
+    let n = parseFloat(box.value);
+    if (isNaN(n)) return;
+    const min = +sld.min, max = +sld.max;
+    n = Math.max(min, Math.min(max, n));
+    sld.value = n;
+    sld.dispatchEvent(new Event('input', { bubbles: true })); // riusa logica esistente
+  });
+  // al blur/Invio: pulisce, allinea allo step e mostra il valore finale
+  const finalize = () => {
+    let n = parseFloat(box.value);
+    const min = +sld.min, max = +sld.max, step = +sld.step || 1;
+    if (isNaN(n)) n = +sld.value;
+    n = Math.max(min, Math.min(max, n));
+    n = Math.round(n / step) * step;
+    sld.value = n;
+    box.value = n;
+    sld.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  box.addEventListener('blur', finalize);
+  box.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); box.blur(); } });
+}
+
+// Applica i campi numerici a tutti gli slider di IMPORTO (€).
+// Simulatore principale, soglia optionality, decumulo, backtest, A/B, goal.
+[
+  'sW', 'sP', 'sO',           // simulatore: patrimonio, PAC, soglia optionality
+  'sDecStart', 'sDecW',       // decumulo: patrimonio iniziale + prelievo annuo
+  'sMcW',                     // monte carlo: prelievo annuo target
+  'sBtW', 'sBtPac',           // backtest: capitale + PAC
+  'sAbPac',                   // confronto A/B: PAC B
+  'sGoalTarget', 'sGoalPAC', 'sGoalW0', // calcolatore obiettivo
+].forEach(id => attachNumberBox(id, true));
+// Prelievo annuo decumulo, se presente
+if (document.getElementById('sDecWd')) attachNumberBox('sDecWd', true);
+
+// Helper globale: dopo aver impostato slider.value via codice, aggiorna il box.
+function syncNumBox(sliderId) {
+  const sld = document.getElementById(sliderId);
+  if (sld && sld._numBox && document.activeElement !== sld._numBox) sld._numBox.value = sld.value;
+}
+window.syncNumBox = syncNumBox;
+
+
 bindSlider('sA', 'lA', 'age', v => v + ' anni');
 bindSlider('sY', 'lY', 'years', v => v + ' anni');
 bindSlider('sO', 'lO', 'opt', v => '€' + fmtN(v));
@@ -3247,11 +3327,11 @@ function updateRetInfo() {
     }
 
     const btnLabel = isOn
-      ? `⚡ CAPE-adj <span style="font-size:10px;opacity:.7">(55% CAPE + 45% DMS)</span>`
-      : `📊 Storico puro <span style="font-size:10px;opacity:.7">(DMS 2024)</span>`;
+      ? `⚡ CAPE-adj <span style="font-size:10px;opacity:.7">(valutazioni live)</span>`
+      : `📊 Storico puro <span style="font-size:10px;opacity:.7">(baseline)</span>`;
     const btnTitle = isOn
-      ? 'Rendimenti ricalibrati con CAPE live. Clicca per usare solo dati storici DMS 2024.'
-      : 'Rendimenti storici puri DMS 2024 (non aggiustati per valutazioni). Clicca per attivare CAPE-adj.';
+      ? 'Rendimenti = baseline + scostamento dovuto alle valutazioni correnti (CAPE/yield), calcolato con metodo coerente col baseline. Clicca per disattivare.'
+      : 'Rendimenti baseline forward-looking (non aggiustati per le valutazioni di mercato correnti). Clicca per applicare lo scostamento da CAPE/yield live.';
 
     const parts = [];
     if (d.cape_sp500)    parts.push(`CAPE S&P ${d.cape_sp500.toFixed(1)}`);
