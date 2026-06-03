@@ -8,22 +8,46 @@
 //   CAPE Europa          -> stimato da P/E MSCI Europe via Stooq (fallback heuristico)
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── CAPE -> rendimento forward atteso (regressione storica Shiller 1881-2024) ──
-// Y = a + b / CAPE  ->  R² ≈ 0.38-0.45 su orizzonte 10 anni (Shiller AER 2015)
-// Parametri OLS calibrati su dati 1881-2024 (dataset pubblico Shiller):
-//   a = -0.0056  b = 1.788   (coefficiente di regressione su EP ratio)
-//   Nota: R_real = a + b × (1/CAPE) dove b ≈ slope OLS ≈ 1.75-1.90
-//   Fonte: Shiller (2014), Campbell-Shiller (1998), Goyal-Welch (2008)
-//   Verifica: CAPE=17 → R_real ≈ +9.96%/a, CAPE=34 → R_real ≈ +4.73%/a
-// Rendimento nominale = rendimento reale + inflazione attesa target (2%)
-// CLAMP applicato al nominale finale (non al solo reale) per coerenza.
-const CAPE_REGR = { a: -0.0056, b: 1.788, inflTarget: 0.020 };
+// ── CAPE -> rendimento forward atteso (metodo "Earnings Yield Delta") ──────────
+// Approccio trasparente e verificabile, preferito per uno strumento educativo
+// rispetto a una regressione OLS opaca (coefficienti non ispezionabili).
+//
+// Principio finanziario: il rendimento reale atteso di lungo periodo di un indice
+// azionario è approssimato dal suo Earnings Yield (EY = 1/CAPE). È quasi
+// un'identità: se gli utili reali sono stabili, comprare a CAPE 25 rende ~4%
+// reale, a CAPE 10 ~10% reale. Fonti: Campbell-Shiller (1988, 1998),
+// Bogle (sources of return), Research Affiliates / GMO (CAPE-based forecasting).
+//
+// Invece di stimare un rendimento ASSOLUTO dal CAPE (sensibile al campione e al
+// coefficiente di regressione), calcoliamo lo SCOSTAMENTO (delta) dell'earnings
+// yield corrente rispetto a quello di un CAPE "normale" di riferimento, e lo
+// applichiamo al rendimento reale storico realizzato dell'asset:
+//
+//   fwd_reale = R_reale_storico + (1/CAPE_oggi − 1/CAPE_baseline)
+//   fwd_nominale = fwd_reale + inflazione_attesa
+//
+// Il delta usa implicitamente coefficiente 1.0 sull'EY (legame "naturale", privo
+// di assunzioni statistiche), più difendibile di un b di regressione (~1.75-1.9).
+//
+// CAPE_BASELINE: CAPE medio di riferimento. 20 ≈ media degli ultimi ~40 anni
+// (regime di tassi moderni); la media lunghissima 1881-oggi è ~17-18 (più severa).
+// Con baseline 20 e CAPE 34.5 → delta EY ≈ −2.1%/a (penalizzazione coerente con
+// un mercato "molto caro"), forward reale USA ≈ 4.5%, nominale ≈ 6.5%.
+const CAPE_PARAMS = {
+  baseline: 20,            // CAPE medio di riferimento (regime moderno)
+  realHistUSA: 0.066,      // rendimento REALE storico azionario USA (~6.6%/a, DMS)
+  realHistEU: 0.052,       // rendimento REALE storico azionario Europa (~5.2%/a, DMS)
+  inflTarget: 0.020,       // inflazione attesa di lungo periodo
+};
 
-function capeToForwardReturn(cape) {
+// Calcola il forward NOMINALE da CAPE via Earnings Yield Delta.
+// realHist = rendimento reale storico dell'asset (default USA).
+function capeToForwardReturn(cape, realHist = CAPE_PARAMS.realHistUSA) {
   if (!cape || cape < 5 || cape > 100) return null;
-  const realFwd = CAPE_REGR.a + CAPE_REGR.b / cape;
+  const eyDelta  = (1 / cape) - (1 / CAPE_PARAMS.baseline); // <0 se caro, >0 se conveniente
+  const realFwd  = realHist + eyDelta;
   // Clamp sul nominale finale: mai < 1% né > 15%
-  return Math.max(0.01, Math.min(0.15, realFwd + CAPE_REGR.inflTarget));
+  return Math.max(0.01, Math.min(0.15, realFwd + CAPE_PARAMS.inflTarget));
 }
 
 // ── Bond yield -> rendimento forward obbligazionario ──────────────────────────
@@ -362,7 +386,7 @@ function recalibratePortfolios(data) {
   const { fwd_eq_usa, fwd_eq_eu, fwd_bond_eur } = data;
   if (!fwd_eq_usa && !fwd_bond_eur) return; // nessun dato, lascia hardcoded
 
-  // Rendimenti storici di riferimento (baseline hardcoded originale)
+  // Rendimenti storici di riferimento (baseline hardcoded originale, livello prudente)
   const BASE = {
     eq_usa:   0.070, // rendimento nominale storico USA azionario (DMS 2024)
     eq_eu:    0.070, // Europa
@@ -370,23 +394,55 @@ function recalibratePortfolios(data) {
     bond_eur: 0.030, // Bond EUR aggregato storico
   };
 
+  // Riferimento "neutro" per il calcolo del DELTA di valutazione: è il forward
+  // che la formula Earnings Yield produrrebbe a CAPE = baseline (mercato a
+  // valutazioni medie). Confrontare il forward live con QUESTO neutro (e non col
+  // BASE storico) garantisce che il delta isoli SOLO lo scostamento di valutazione
+  // per ciascun mercato, evitando di mescolare il diverso livello di rendimento
+  // storico (USA vs EU) col diverso grado di carovita. Coerente per mercato.
+  const NEUTRAL = {
+    eq_usa: (typeof capeToForwardReturn === 'function')
+      ? capeToForwardReturn(CAPE_PARAMS.baseline, CAPE_PARAMS.realHistUSA) : 0.086,
+    eq_eu:  (typeof capeToForwardReturn === 'function')
+      ? capeToForwardReturn(CAPE_PARAMS.baseline, CAPE_PARAMS.realHistEU)  : 0.072,
+    bond_eur: BASE.bond_eur, // i bond usano lo yield, nessun "neutro CAPE"
+  };
+
   // Rendimenti forward CAPE-adjusted
-  const liveEqUSA  = fwd_eq_usa  ?? BASE.eq_usa;
-  const liveEqEU   = fwd_eq_eu   ?? BASE.eq_eu;
+  const liveEqUSA  = fwd_eq_usa  ?? NEUTRAL.eq_usa;
+  const liveEqEU   = fwd_eq_eu   ?? NEUTRAL.eq_eu;
   const liveBond   = fwd_bond_eur ?? BASE.bond_eur;
   const liveEqEM   = BASE.eq_em; // EM: no CAPE affidabile, usa storico
 
-  // Blend bayesiano
-  const blend = (live, base) => SHRINKAGE_LAMBDA * live + (1 - SHRINKAGE_LAMBDA) * base;
-  const muEqUSA  = blend(liveEqUSA,  BASE.eq_usa);
-  const muEqEU   = blend(liveEqEU,   BASE.eq_eu);
+  // Blend bayesiano: live forward vs NEUTRO di valutazione (stesso mercato).
+  // In questo modo, quando il mercato è a CAPE neutro (live == NEUTRAL), il blend
+  // è esattamente NEUTRAL e il delta finale è zero.
+  const blend = (live, neutral) => SHRINKAGE_LAMBDA * live + (1 - SHRINKAGE_LAMBDA) * neutral;
+  const muEqUSA  = blend(liveEqUSA,  NEUTRAL.eq_usa);
+  const muEqEU   = blend(liveEqEU,   NEUTRAL.eq_eu);
   const muBond   = blend(liveBond,   BASE.bond_eur);
   const muEqEM   = liveEqEM; // no shrinkage su EM
 
   // Rendimento azionario "sviluppati" globale = media ponderata USA(65%) + EU(25%) + altro(10%)
   const muEqDev  = 0.65 * muEqUSA + 0.25 * muEqEU + 0.10 * BASE.eq_em;
 
-  // Ricalibra ogni portafoglio usando la composizione reale eq/ob
+  // ── Versione "neutra" (CAPE = baseline) degli stessi aggregati ──
+  // Riferimento per il delta: rappresenta il forward a valutazioni medie. Il delta
+  // = μ_cape − μ_neutro isola il puro effetto delle valutazioni CORRENTI rispetto
+  // alla norma storica, con metodo identico (no mix di metodologie).
+  const muEqDevHist = 0.65 * NEUTRAL.eq_usa + 0.25 * NEUTRAL.eq_eu + 0.10 * BASE.eq_em;
+  const muBondHist  = BASE.bond_eur;
+
+  const goldBase = 0.040; // oro: no CAPE, usa storico
+  const cashBase = 0.020; // liquidità ~2%
+  const trendBase = 0.050; // managed futures: rendimento atteso ~5%, indipendente da CAPE
+
+  // Ricalibra ogni portafoglio applicando il DELTA CAPE ai valori PORT calibrati.
+  // μ_cape(port)   = Σ wᵢ·rᵢ_cape / Σwᵢ   (ricostruzione con forward live)
+  // μ_hist(port)   = Σ wᵢ·rᵢ_hist / Σwᵢ   (ricostruzione con rendimenti storici)
+  // delta          = μ_cape − μ_hist      (puro effetto valutazioni, stesso metodo)
+  // p.normal       = p._baseNormal + delta (ancora al valore calibrato a mano)
+  // In regime storico (delta=0) p.normal resta esattamente = _baseNormal calibrato.
   const recalib = (portKey) => {
     const p = PORT[portKey];
     if (!p || portKey === 'lifecycle' || portKey === 'custom') return;
@@ -394,47 +450,62 @@ function recalibratePortfolios(data) {
     const obW  = p.ob   ?? 0;
     const goldW = p.gold ?? 0;
     const cashW = p.cash ?? 0;
-    const goldBase = 0.040; // oro: no CAPE, usa storico
-    const cashBase = 0.020; // liquidità ~2%
+    const trendW = p.trend ?? 0; // trend following (return stacking): diversificatore
 
-    // Normalizza pesi (alcuni portfolio usano leva implicita)
-    const wSum = eqW + obW + goldW + cashW || 1;
-    const muNew = (eqW * muEqDev + obW * muBond + goldW * goldBase + cashW * cashBase) / wSum;
-
-    // Mantieni la struttura distribuzionale (spread best-worst) proporzionale
-    const muOld = p._baseNormal ?? p.normal; // salva originale
-    if (!p._baseNormal) {
+    // Salva i valori PORT calibrati a mano (baseline storica affidabile)
+    if (p._baseNormal == null) {
       p._baseNormal = p.normal;
       p._baseBest   = p.best;
       p._baseWorst  = p.worst;
     }
+
+    // Normalizza pesi (alcuni portfolio usano leva implicita, wSum>1)
+    const wSum = eqW + obW + goldW + cashW + trendW || 1;
+    // Solo le componenti sensibili al CAPE (azioni e bond) cambiano tra le due
+    // versioni; oro/cash/trend sono identiche e quindi NON contribuiscono al delta.
+    const muCape = (eqW * muEqDev     + obW * muBond     + goldW * goldBase + cashW * cashBase + trendW * trendBase) / wSum;
+    const muHist = (eqW * muEqDevHist + obW * muBondHist + goldW * goldBase + cashW * cashBase + trendW * trendBase) / wSum;
+    const delta  = muCape - muHist; // puro effetto valutazioni, metodo coerente
+
     const spreadBest  = p._baseBest  - p._baseNormal;
     const spreadWorst = p._baseNormal - p._baseWorst;
 
-    p.normal = Math.max(0.005, Math.min(0.14, muNew));
+    // Applica il delta al valore calibrato (non sostituisce il metodo)
+    p.normal = Math.max(0.005, Math.min(0.14, p._baseNormal + delta));
     p.best   = Math.min(0.20, p.normal + spreadBest);
     p.worst  = Math.max(-0.08, p.normal - spreadWorst);
   };
 
   Object.keys(PORT).forEach(recalib);
 
-  // Ricalibra anche ASSET_CLASSES per portafoglio custom
-  // Salva base ASSET_CLASSES prima di sovrascrivere (usato da restoreBasePortfolios)
+  // Ricalibra anche ASSET_CLASSES per portafoglio custom — con lo STESSO metodo
+  // delta: mu = _baseMu + (μ_cape − μ_storico). Così un custom in modalità storica
+  // mantiene i mu calibrati delle asset class, e in CAPE-adj riceve solo lo
+  // scostamento dovuto alle valutazioni, coerente coi preset.
   const _acKeys = ['eq_usa','eq_sviluppati','eq_europa','ob_glob_agg','ob_glob_gov','ob_usa_ult'];
   _acKeys.forEach(k => { if (ASSET_CLASSES[k] && ASSET_CLASSES[k]._baseMu == null) ASSET_CLASSES[k]._baseMu = ASSET_CLASSES[k].mu; });
 
-  if (ASSET_CLASSES.eq_usa)       ASSET_CLASSES.eq_usa.mu       = Math.max(0.02, Math.min(0.14, muEqUSA));
-  if (ASSET_CLASSES.eq_sviluppati) ASSET_CLASSES.eq_sviluppati.mu = Math.max(0.02, Math.min(0.14, muEqDev));
-  if (ASSET_CLASSES.eq_europa)    ASSET_CLASSES.eq_europa.mu     = Math.max(0.02, Math.min(0.14, muEqEU));
-  if (ASSET_CLASSES.ob_glob_agg)  ASSET_CLASSES.ob_glob_agg.mu  = Math.max(0.005, Math.min(0.10, muBond));
-  if (ASSET_CLASSES.ob_glob_gov)  ASSET_CLASSES.ob_glob_gov.mu  = Math.max(0.005, Math.min(0.09, muBond * 0.90));
-  if (ASSET_CLASSES.ob_usa_ult)   ASSET_CLASSES.ob_usa_ult.mu   = Math.max(0.005, Math.min(0.10, liveBond * 1.05));
+  // Delta per ogni aggregato (forward CAPE − neutro di valutazione, per mercato)
+  const dEqUSA = muEqUSA - NEUTRAL.eq_usa;
+  const dEqDev = muEqDev - muEqDevHist;
+  const dEqEU  = muEqEU  - NEUTRAL.eq_eu;
+  const dBond  = muBond  - BASE.bond_eur;
 
-  console.info('[LiveData] Portafogli ricalibrati:', {
-    muEqUSA: (muEqUSA*100).toFixed(2)+'%',
-    muEqEU:  (muEqEU*100).toFixed(2)+'%',
-    muBond:  (muBond*100).toFixed(2)+'%',
-    muEqDev: (muEqDev*100).toFixed(2)+'%',
+  const applyDelta = (k, delta, lo, hi) => {
+    const ac = ASSET_CLASSES[k];
+    if (ac && ac._baseMu != null) ac.mu = Math.max(lo, Math.min(hi, ac._baseMu + delta));
+  };
+  applyDelta('eq_usa',       dEqUSA, 0.02, 0.14);
+  applyDelta('eq_sviluppati', dEqDev, 0.02, 0.14);
+  applyDelta('eq_europa',    dEqEU,  0.02, 0.14);
+  applyDelta('ob_glob_agg',  dBond,  0.005, 0.10);
+  applyDelta('ob_glob_gov',  dBond,  0.005, 0.09);
+  applyDelta('ob_usa_ult',   dBond,  0.005, 0.10);
+
+  console.info('[LiveData] Portafogli ricalibrati (delta CAPE):', {
+    dEqUSA: (dEqUSA*100).toFixed(2)+'%',
+    dEqDev: (dEqDev*100).toFixed(2)+'%',
+    dBond:  (dBond*100).toFixed(2)+'%',
   });
 }
 
@@ -598,9 +669,10 @@ window.fetchLiveMarketData = async function fetchLiveMarketData() {
     // Identifica la fonte che ha vinto (la funzione setta _lastCapeEUSource)
     d.cape_eu_source = capeEURaw ? (window._lastCapeEUSource || 'live') : 'estimated';
 
-    // Rendimenti forward
-    d.fwd_eq_usa    = d.cape_sp500  ? capeToForwardReturn(d.cape_sp500) : null;
-    d.fwd_eq_eu     = d.cape_europe ? capeToForwardReturn(d.cape_europe) : null;
+    // Rendimenti forward (Earnings Yield Delta: ogni mercato usa il proprio
+    // rendimento reale storico come ancora — USA ~6.6% reale, Europa ~5.2% reale)
+    d.fwd_eq_usa    = d.cape_sp500   ? capeToForwardReturn(d.cape_sp500, CAPE_PARAMS.realHistUSA) : null;
+    d.fwd_eq_eu     = d.cape_europe  ? capeToForwardReturn(d.cape_europe, CAPE_PARAMS.realHistEU)  : null;
     d.fwd_bond_eur  = d.yield_eur_10y ? yieldToForwardReturn(d.yield_eur_10y) : null;
 
     // Semafori

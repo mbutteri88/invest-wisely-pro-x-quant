@@ -531,3 +531,44 @@ tbody tr:hover{background:var(--bg2)}
 #btSeqRiskSec summary::-webkit-details-marker { display: none; }
 #btSeqRiskSec summary span { transition: transform .2s; }
 #btSeqRiskSec[open] summary > span:first-child { transform: rotate(90deg); }
+
+/* ── Campo numerico digitabile accanto agli slider di importo ────────────── */
+/* Permette di inserire valori esatti (utile per importi elevati, es. milioni) */
+.num-box {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  color: var(--text, #e8eaed);
+  background: var(--bg2, rgba(255,255,255,.04));
+  border: 1px solid var(--border, rgba(255,255,255,.12));
+  border-radius: 7px;
+  box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
+  -moz-appearance: textfield;
+}
+.num-box::-webkit-outer-spin-button,
+.num-box::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.num-box:focus {
+  outline: none;
+  border-color: var(--blue, #1a73e8);
+  box-shadow: 0 0 0 3px rgba(26,115,232,.18);
+}
+.num-box-wrap {
+  position: relative;
+  margin-top: 6px;
+}
+.num-box-wrap .num-box { margin-top: 0; padding-left: 26px; text-align: right; }
+.num-box-wrap::before {
+  content: '€';
+  position: absolute;
+  left: 10px; top: 50%;
+  transform: translateY(-50%);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  color: var(--text3, rgba(255,255,255,.45));
+  pointer-events: none;
+}

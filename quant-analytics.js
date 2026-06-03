@@ -208,8 +208,71 @@ const CORR_MATRIX = (() => {
     R[i][j] = r;
     R[j][i] = r;
   }
-  return R;
+
+  // ── Proiezione sulla matrice di correlazione valida più vicina ───────────────
+  // Le correlazioni sopra sono calibrate a mano coppia-per-coppia su letteratura.
+  // Alcune combinazioni sono però reciprocamente incoerenti (es. value e momentum
+  // entrambi ~0.8 con l'azionario ma -0.15 tra loro: geometricamente impossibile),
+  // rendendo la matrice NON semidefinita positiva. Una matrice di correlazione non
+  // PSD è matematicamente invalida e può generare varianze di portafoglio negative
+  // o Sharpe distorti. Applichiamo l'algoritmo di Higham (2002, "Computing the
+  // nearest correlation matrix") che trova la matrice PSD PIÙ VICINA, alterando i
+  // valori il minimo indispensabile (variazione media ~0.02), e un piccolo ridge
+  // finale per garantire un margine PD robusto. Risultato: matrice valida che
+  // preserva quasi integralmente la calibrazione (le uniche variazioni sensibili
+  // sono sulle coppie che erano intrinsecamente impossibili).
+  const Rpd = _nearestCorrelationPD(R, AC_KEYS_EF.length);
+  return Rpd;
 })();
+
+// Jacobi eigenvalue decomposition per matrice simmetrica → {eig[], V[][]}.
+function _jacobiEig(M) {
+  const N = M.length;
+  const a = M.map(r => r.slice());
+  const V = Array.from({length:N}, (_,i) => Array.from({length:N}, (_,j) => i===j?1:0));
+  for (let sweep=0; sweep<200; sweep++) {
+    let off=0;
+    for (let p=0;p<N;p++) for (let q=p+1;q<N;q++) off += a[p][q]*a[p][q];
+    if (off < 1e-18) break;
+    for (let p=0;p<N;p++) for (let q=p+1;q<N;q++) {
+      if (Math.abs(a[p][q]) < 1e-20) continue;
+      const th = (a[q][q]-a[p][p]) / (2*a[p][q]);
+      const t  = Math.sign(th||1) / (Math.abs(th)+Math.sqrt(th*th+1));
+      const c  = 1/Math.sqrt(t*t+1), s = t*c;
+      for (let i=0;i<N;i++){ const aip=a[i][p],aiq=a[i][q]; a[i][p]=c*aip-s*aiq; a[i][q]=s*aip+c*aiq; }
+      for (let i=0;i<N;i++){ const api=a[p][i],aqi=a[q][i]; a[p][i]=c*api-s*aqi; a[q][i]=s*api+c*aqi; }
+      for (let i=0;i<N;i++){ const vip=V[i][p],viq=V[i][q]; V[i][p]=c*vip-s*viq; V[i][q]=s*vip+c*viq; }
+    }
+  }
+  return { eig: a.map((r,i) => r[i]), V };
+}
+
+// Higham (2002) alternating projections + ridge finale → matrice di correlazione PD.
+function _nearestCorrelationPD(A, n) {
+  let Y = A.map(r => r.slice());
+  const dS = Array.from({length:n}, () => Array(n).fill(0));
+  for (let it=0; it<200; it++) {
+    const Rk = Y.map((r,i) => r.map((x,j) => x - dS[i][j]));
+    const { eig, V } = _jacobiEig(Rk);
+    // proietta su PSD: azzera autovalori non positivi
+    const X = Array.from({length:n}, () => Array(n).fill(0));
+    for (let i=0;i<n;i++) for (let j=0;j<n;j++) {
+      let sum=0;
+      for (let k=0;k<n;k++){ const e = eig[k] > 0 ? eig[k] : 0; sum += V[i][k]*e*V[j][k]; }
+      X[i][j] = sum;
+    }
+    for (let i=0;i<n;i++) for (let j=0;j<n;j++) dS[i][j] = X[i][j] - Rk[i][j];
+    Y = X.map(r => r.slice());
+    for (let i=0;i<n;i++) Y[i][i] = 1; // diagonale unitaria
+  }
+  // Ridge finale (shrinkage 3% verso identità) per margine PD robusto e clamp
+  const w = 0.03;
+  for (let i=0;i<n;i++) for (let j=0;j<n;j++) {
+    if (i===j) { Y[i][j] = 1; continue; }
+    Y[i][j] = Math.max(-0.98, Math.min(0.98, (1-w) * Y[i][j]));
+  }
+  return Y;
+}
 
 // ── Covarianza tra due asset class ─────────────────────────────────────────
 function getCov(acA, acB) {
