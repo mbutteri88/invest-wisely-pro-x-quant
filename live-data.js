@@ -394,12 +394,14 @@ function recalibratePortfolios(data) {
     const obW  = p.ob   ?? 0;
     const goldW = p.gold ?? 0;
     const cashW = p.cash ?? 0;
+    const trendW = p.trend ?? 0; // trend following (return stacking): diversificatore
     const goldBase = 0.040; // oro: no CAPE, usa storico
     const cashBase = 0.020; // liquidità ~2%
+    const trendBase = 0.050; // managed futures: rendimento atteso ~5%, indipendente da CAPE
 
     // Normalizza pesi (alcuni portfolio usano leva implicita)
-    const wSum = eqW + obW + goldW + cashW || 1;
-    const muNew = (eqW * muEqDev + obW * muBond + goldW * goldBase + cashW * cashBase) / wSum;
+    const wSum = eqW + obW + goldW + cashW + trendW || 1;
+    const muNew = (eqW * muEqDev + obW * muBond + goldW * goldBase + cashW * cashBase + trendW * trendBase) / wSum;
 
     // Mantieni la struttura distribuzionale (spread best-worst) proporzionale
     const muOld = p._baseNormal ?? p.normal; // salva originale
