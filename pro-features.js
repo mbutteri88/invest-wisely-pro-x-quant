@@ -622,8 +622,6 @@ function syncGoalPortfolio() {
   document.getElementById('lGoalW0') && (document.getElementById('lGoalW0').textContent = _fmtW(goalState.w0));
   document.getElementById('sGoalPAC') && (document.getElementById('sGoalPAC').value = goalState.pac);
   document.getElementById('lGoalPAC') && (document.getElementById('lGoalPAC').textContent = _fmtW(goalState.pac) + '/m');
-  // Sincronizza i campi numerici digitabili affiancati agli slider
-  if (typeof syncNumBox === 'function') { syncNumBox('sGoalW0'); syncNumBox('sGoalPAC'); }
   document.querySelectorAll('#goalPortBtns .gbtn').forEach(b =>
     b.classList.toggle('a-blue', b.dataset.gp === goalState.portfolio));
   renderGoalTab();

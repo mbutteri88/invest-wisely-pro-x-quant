@@ -1036,7 +1036,7 @@
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="pblock"><div class="plabel"><span>TER B</span><span class="pval" style="background:var(--purple-dim);color:var(--purple);border:1px solid rgba(147,52,230,.3)" id="lAbTer">0.20%</span></div><input type="range" id="sAbTer" min="0" max="2.0" step="0.05" value="0.20" oninput="stateB.ter=+this.value;document.getElementById('lAbTer').textContent=this.value+'%';renderAB()"></div>
-        <div class="pblock"><div class="plabel"><span>PAC B</span><span class="pval" style="background:var(--purple-dim);color:var(--purple);border:1px solid rgba(147,52,230,.3)" id="lAbPac">= A</span></div><input type="range" id="sAbPac" min="-1" max="15000" step="50" value="-1" oninput="stateB.pac=+this.value;document.getElementById('lAbPac').textContent=this.value<0?'= A':'€'+Math.round(this.value)+'/m';renderAB()"><div class="range-hints"><span>= A</span><span>€15.000</span></div></div>
+        <div class="pblock"><div class="plabel"><span>PAC B</span><span class="pval" style="background:var(--purple-dim);color:var(--purple);border:1px solid rgba(147,52,230,.3)" id="lAbPac">= A</span></div><input type="range" id="sAbPac" min="-1" max="5000" step="50" value="-1" oninput="stateB.pac=+this.value;document.getElementById('lAbPac').textContent=this.value<0?'= A':'€'+Math.round(this.value)+'/m';renderAB()"><div class="range-hints"><span>= A</span><span>€5.000</span></div></div>
       </div>
     </div>
   </div>
@@ -1062,7 +1062,7 @@
   <div class="sec-label">🎯 Probabilità di Successo (Monte Carlo 1.000 Scenari)</div>
   <div class="info-box" style="margin-bottom:16px">Calcola quante volte il portafoglio rimane positivo per tutta la durata del prelievo. Piano con &gt;90% = robusto secondo i financial planner professionisti.</div>
   <div class="grid-2" style="margin-bottom:16px">
-    <div class="pblock"><div class="plabel"><span>Prelievo annuo target</span><span class="pval" id="lMcW">€24.000/a</span></div><input type="range" id="sMcW" min="0" max="300000" step="1000" value="24000"><div class="range-hints"><span>€0</span><span>€300k/anno</span></div></div>
+    <div class="pblock"><div class="plabel"><span>Prelievo annuo target</span><span class="pval" id="lMcW">€24.000/a</span></div><input type="range" id="sMcW" min="0" max="200000" step="1000" value="24000"><div class="range-hints"><span>€0</span><span>€200k/anno</span></div></div>
     <div class="pblock"><div class="plabel"><span>Anni di prelievo (post-accumulo)</span><span class="pval" id="lMcY">25 anni</span></div><input type="range" id="sMcY" min="5" max="50" step="1" value="25"><div class="range-hints"><span>5</span><span>50 anni</span></div></div>
     <div class="pblock"><div class="plabel"><span>Indicizzazione prelievo/anno</span><span class="pval" id="lMcI">2.0%</span></div><input type="range" id="sMcI" min="0" max="5" step="0.5" value="2.0"><div class="range-hints"><span>0%</span><span>5%/anno</span></div></div>
     <div style="display:flex;align-items:flex-end"><button class="gbtn a-blue" onclick="runSuccessMC()" style="padding:10px 20px;font-size:13.5px;font-weight:600;width:100%">🎯 Calcola Probabilità</button></div>
@@ -1248,11 +1248,11 @@
         <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:8px">Parametri</div>
         <div class="pblock" style="margin-bottom:8px">
           <div class="plabel"><span>PAC mensile</span><span class="pval" id="lBtPac">€500/m</span></div>
-          <input type="range" id="sBtPac" min="0" max="15000" step="100" value="500" oninput="btState.pac=+this.value;document.getElementById('lBtPac').textContent='€'+fmtN(+this.value)+'/m'">
+          <input type="range" id="sBtPac" min="0" max="5000" step="100" value="500" oninput="btState.pac=+this.value;document.getElementById('lBtPac').textContent='€'+fmtN(+this.value)+'/m'">
         </div>
         <div class="pblock">
           <div class="plabel"><span>Capitale iniziale</span><span class="pval" id="lBtW">€10.000</span></div>
-          <input type="range" id="sBtW" min="0" max="5000000" step="5000" value="10000" oninput="btState.w=+this.value;document.getElementById('lBtW').textContent=fmt(+this.value)">
+          <input type="range" id="sBtW" min="0" max="500000" step="5000" value="10000" oninput="btState.w=+this.value;document.getElementById('lBtW').textContent=fmt(+this.value)">
         </div>
       </div>
     </div>
@@ -1525,14 +1525,14 @@
     <!-- Target capitale -->
     <div class="pblock" id="goalTargetBlock">
       <div class="plabel"><span>🎯 Obiettivo patrimoniale</span><span class="pval" id="lGoalTarget">€500k</span></div>
-      <input type="range" id="sGoalTarget" min="10000" max="5000000" step="10000" value="500000">
-      <div class="range-hints"><span>€10k</span><span>€5M</span></div>
+      <input type="range" id="sGoalTarget" min="10000" max="3000000" step="10000" value="500000">
+      <div class="range-hints"><span>€10k</span><span>€3M</span></div>
     </div>
     <!-- PAC mensile -->
     <div class="pblock" id="goalPACBlock" style="display:none">
       <div class="plabel"><span>💳 PAC mensile</span><span class="pval" id="lGoalPAC">€500/m</span></div>
-      <input type="range" id="sGoalPAC" min="0" max="15000" step="50" value="500">
-      <div class="range-hints"><span>€0</span><span>€15.000</span></div>
+      <input type="range" id="sGoalPAC" min="0" max="5000" step="50" value="500">
+      <div class="range-hints"><span>€0</span><span>€5.000</span></div>
     </div>
     <!-- Anni -->
     <div class="pblock" id="goalYearsBlock">
@@ -1543,8 +1543,8 @@
     <!-- Capitale iniziale -->
     <div class="pblock">
       <div class="plabel"><span>🏦 Patrimonio iniziale</span><span class="pval" id="lGoalW0">€0</span></div>
-      <input type="range" id="sGoalW0" min="0" max="5000000" step="1000" value="0">
-      <div class="range-hints"><span>€0</span><span>€5M</span></div>
+      <input type="range" id="sGoalW0" min="0" max="500000" step="1000" value="0">
+      <div class="range-hints"><span>€0</span><span>€500k</span></div>
     </div>
     <!-- TER -->
     <div class="pblock">

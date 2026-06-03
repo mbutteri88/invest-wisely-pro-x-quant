@@ -120,20 +120,15 @@ function _syncUIFromState() {
   const fmtN2 = v => Math.round(v).toLocaleString('it-IT');
 
   _s('sW',          state.w);           _l('lW',          fmt2(state.w));
-  _s('sP',          state.pac);         _l('lP',          '€' + fmtN2(state.pac) + '/m');
-  _s('sA',          state.age);         _l('lA',          state.age + ' anni');
-  _s('sY',          state.years);       _l('lY',          state.years + ' anni');
-  _s('sO',          state.opt);         _l('lO',          fmt2(state.opt));
+  _s('sPac',        state.pac);         _l('lPac',        '€' + fmtN2(state.pac) + '/m');
+  _s('sAge',        state.age);         _l('lAge',        state.age + ' anni');
+  _s('sYears',      state.years);       _l('lYears',      state.years + ' anni');
+  _s('sOpt',        state.opt);         _l('lOpt',        fmt2(state.opt));
   _s('sTer',        state.ter);         _l('lTer',        state.ter.toFixed(2) + '%');
   _s('sTeq',        state.taxEq);       _l('lTeq',        state.taxEq.toFixed(1) + '%');
   _s('sTob',        state.taxOb);       _l('lTob',        state.taxOb.toFixed(1) + '%');
   _s('sInflBottom', state.inflBottom);  _l('lInflBottom', state.inflBottom.toFixed(1) + '%');
   _s('sInflVol',    state.inflVol);     _l('lInflVol',    state.inflVol.toFixed(1) + '%');
-
-  // Sincronizza i campi numerici digitabili affiancati agli slider di importo
-  if (typeof window.syncNumBox === 'function') {
-    ['sW', 'sP', 'sO', 'sDecStart', 'sGoalW0', 'sGoalPAC', 'sGoalTarget'].forEach(window.syncNumBox);
-  }
 
   // Portafoglio
   document.querySelectorAll('#allocBtns .gbtn').forEach(b =>

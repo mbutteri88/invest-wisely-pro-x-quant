@@ -98,8 +98,8 @@ const PORT = {
     label: '🌤️ All Seasons (Dalio)',
     desc: 'Versione retail dell\'All Weather di Ray Dalio (Bridgewater). Composizione: 30% Azioni, 40% Ob. Lungo Termine, 15% Ob. Medio Termine, 7.5% Oro, 7.5% Commodities. Progettato per distribuire il rischio su quattro regimi macro (crescita alta/bassa × inflazione alta/bassa). Storicamente: ~7.5%/a nominale, σ≈8%. Rendimento atteso forward-looking: ~5.0%/a. Nota: l\'allocazione del 40% in obbligazioni a lungo termine lo rende più vulnerabile all\'inflazione di quanto sembri (beta inflazione calcolato ≈ −0.03: la perdita sulle obbligazioni compensa quasi del tutto la protezione di oro e commodities).',
     best: .066, normal: .050, worst: .020, vol: .080,
-    eq: .30, ob: .55, gold: .15, cash: 0,
-    realRet: .030, inflBeta: -0.03, fxExp: 0.40, // 30%eq*0.85 + 15%real(oro 7.5%+comm 7.5%) + 55%ob*0.05
+    eq: .30, ob: .55, gold: .075, cash: 0,
+    realRet: .030, inflBeta: -0.03, fxExp: 0.40, // 30%eq*0.85 + 7.5%oro*1.0 + 55%ob*0.05 + 7.5%comm*0.80
     breakdown: {
       'Azioni Globali': '30%',
       'Ob. Lungo Termine': '40%',
@@ -160,7 +160,7 @@ const PORT = {
     label: '🔀 Return Stacking (UCITS)',
     desc: 'Strategia "return stacking" replicabile con ETF UCITS: combina un efficient core globale (90/60 azioni-bond) con un ETF managed futures / trend following. Esposizione effettiva ~45% azioni + 30% obbligazioni + 50% trend = 125% notional. Il trend following è un "vero diversificatore" (correlazione ~−0,05 con azioni) che storicamente genera "crisis alpha" nelle crisi prolungate (2002, 2008, 2022). Sharpe atteso superiore grazie alla decorrelazione. Costi più alti (TER più elevato) e complessità maggiore — adatto a investitori esperti. Versione semplificata e didattica del concetto di portable alpha.',
     best: .089, normal: .065, worst: .018, vol: .101,
-    eq: .45, ob: .30, gold: 0, cash: 0, trend: .50, leverage: 1.25,
+    eq: .45, ob: .30, gold: 0, cash: 0, leverage: 1.25,
     realRet: .045, inflBeta: 0.10, fxExp: 0.65,
     breakdown: {
       'Efficient Core Globale 90/60': '50%',
@@ -654,13 +654,6 @@ const NORMAL_ECO = { eqMult: 1.0, obMult: 1.0, goldMult: 0.7, cashRet: 0.02, inf
 const SEQ_RATES = { mild: -.20, moderate: -.35, severe: -.50 };
 const RECOVERY_YEARS = 5;
 const BOND_RALLY_RATE = .05;
-// Frazione di recupero del gap durante la fase di recovery (0<f<1).
-// Con f=1 il rimbalzo annullerebbe interamente il crollo (irrealistico: il
-// catch-up moltiplicativo riportava il capitale sulla traiettoria base e per i
-// crash severi addirittura la superava, cancellando il sequence-of-returns risk).
-// Con f=0.6 il recupero del prezzo è parziale e lascia una "cicatrice" permanente
-// differenziata per severità, coerente con l'evidenza empirica del rischio sequenza.
-const RECOVERY_CATCHUP = 0.6;
 
 // ══════════════════════════════════════════════════════════════
 // STATE
@@ -683,7 +676,7 @@ let state = {
   fxHedge: false,        // se true, copertura cambio attiva (costo ~0.3%/a)
   fxVol: 0.085,          // volatilità storica EUR/USD ~8.5%/a (1999-2024)
   fxHedgeCost: 0.003,    // costo annuo della copertura valutaria ~0.3%
-  capeAdj: true,         // se true: baseline + scostamento da CAPE/yield live (metodo delta coerente)
+  capeAdj: true,         // se true, rendimenti ricalibrati con CAPE live (blend 55/45)
 };
 let stateB = { portfolio: 'eq50', ter: .20, pac: -1 };
 let decState = { portfolio: 'eq60', strategy: 'inflation', startPortfolio: 500000, withdrawal: 20000, years: 30, inflation: 2.0, ter: .20, ecoScenario: null, ecoTiming: 'early' };
@@ -719,7 +712,7 @@ function getEquityWeight(port, age) {
 
 function getGoldWeight(port) {
   if (port === 'custom') return calcCustomParams().goldW;
-  const m = { golden_butterfly: .2, permanent: .25, all_seasons: .15 };
+  const m = { golden_butterfly: .2, permanent: .25, all_seasons: .075 };
   return m[port] ?? 0;
 }
 
@@ -915,24 +908,26 @@ function getRateEco(portKey, ecoKey, year, startAge, ecoWin) {
   const goldW = Math.max(0, p.gold ?? getGoldWeight(portKey));
   const cashW = Math.max(0, p.cash ?? getCashWeight(portKey));
   const obW   = Math.max(0, p.ob   ?? Math.max(0, 1 - eqW - goldW - cashW));
-  // Trend following (return stacking): diversificatore. Reagisce ai regimi in
-  // modo simile all'oro (crisis alpha nelle crisi prolungate); usa goldMult.
-  const trendW = Math.max(0, p.trend ?? 0);
   // Normalizza i pesi a 1 per calcolare i contributi relativi al delta di regime.
   // Per portafogli a leva (wSum > 1) questo rispecchia la sensibilita relativa
   // di ciascuna asset class al ciclo economico, senza amplificare il delta.
-  const wSum = eqW + obW + goldW + cashW + trendW || 1;
+  const wSum = eqW + obW + goldW + cashW || 1;
 
   // Rendimenti "anchor" per il calcolo del delta: valori medi coerenti con
   // i portafogli semplici (eq100 -> 7%, ob100 -> 3%, gold puro -> 4%).
-  const anchorEq = 0.07, anchorOb = 0.03, anchorGold = 0.04, anchorCash = 0.025, anchorTrend = 0.05;
+  const anchorEq = 0.07, anchorOb = 0.03, anchorGold = 0.04, anchorCash = 0.025;
+  // Delta di regime: scostamento RELATIVO rispetto al regime NORMALE. Ogni
+  // moltiplicatore è confrontato col valore che ha in NORMAL_ECO (non con 1):
+  // così in regime normale ogni termine è 0 -> delta 0 -> getRateEco = muNormal
+  // = getRate(). Necessario perché NORMAL_ECO non ha tutti i mult = 1 (es.
+  // goldMult = 0.7, cashRet = 0.02): confrontare con 1 lasciava un residuo sui
+  // portafogli ricchi di oro/liquidità (permanent, golden butterfly, all seasons).
   const nrm = NORMAL_ECO;
   const deltaEco = (
-      eqW    * anchorEq    * (eco.eqMult   - nrm.eqMult)
-    + obW    * anchorOb    * (eco.obMult   - nrm.obMult)
-    + goldW  * anchorGold  * (eco.goldMult - nrm.goldMult)
-    + trendW * anchorTrend * (eco.goldMult - nrm.goldMult)
-    + cashW  * ((eco.cashRet ?? nrm.cashRet) - nrm.cashRet)
+      eqW   * anchorEq   * (eco.eqMult   - nrm.eqMult)
+    + obW   * anchorOb   * (eco.obMult   - nrm.obMult)
+    + goldW * anchorGold * (eco.goldMult - nrm.goldMult)
+    + cashW * ((eco.cashRet ?? nrm.cashRet) - nrm.cashRet)
   ) / wSum;
 
   return muNormal + deltaEco - fxCostEco;
@@ -1011,17 +1006,6 @@ function blendedTaxRate(age) {
   }
   const rawEq = getEquityWeight(state.portfolio, age);
   const eq = Math.max(0, Math.min(1, rawEq));
-  // Trend following (es. return stacking): redditi diversi → aliquota piena (taxEq).
-  // Lo scorporo dal residuo obbligazionario evita di tassarlo erroneamente al 12.5%.
-  const pMeta = PORT[state.portfolio];
-  const trendW = pMeta?.trend ?? 0;
-  if (trendW > 0) {
-    const obMetaW = Math.max(0, pMeta.ob ?? 0);
-    const tot = eq + obMetaW + trendW || 1;
-    return (eq / tot) * state.taxEq / 100
-         + (obMetaW / tot) * state.taxOb / 100
-         + (trendW / tot) * state.taxEq / 100;
-  }
   return (eq * state.taxEq + (1 - eq) * state.taxOb) / 100;
 }
 
@@ -1106,7 +1090,7 @@ function project(scenario, withSeq, terOverride = null, portOverride = null) {
     const severityFactor = idx === 0 ? 1.0 : idx === 1 ? 0.65 : 0.45; // diminishing severity
     const acw = getCrashYear(seq.timing, years) >= 0 ? getEquityWeight(portKey, age + cy) : 0;
     const crRate = eqCR * severityFactor * acw + BOND_RALLY_RATE * (1 - acw);
-    const cuf = acw > 0 ? Math.pow(Math.pow(1 / (1 + eqCR * severityFactor), 1 / RECOVERY_YEARS), RECOVERY_CATCHUP) : 1;
+    const cuf = acw > 0 ? Math.pow(1 / (1 + eqCR * severityFactor), 1 / RECOVERY_YEARS) : 1;
     crashMap[cy] = { rate: crRate, cuf, acw, severityFactor };
   });
 
@@ -1232,7 +1216,7 @@ function runMontecarlo() {
   const acw = crashYear > 0 ? getEquityWeight(portfolio, age + crashYear) : 0;
   const eqCR = SEQ_RATES[seq.severity] ?? -0.35;
   const acr = eqCR * acw + BOND_RALLY_RATE * (1 - acw);
-  const cuf = acw > 0 ? Math.pow(Math.pow(1 / (1 + eqCR), 1 / RECOVERY_YEARS), RECOVERY_CATCHUP) : 1;
+  const cuf = acw > 0 ? Math.pow(1 / (1 + eqCR), 1 / RECOVERY_YEARS) : 1;
   
   // Build crash map for multi-crash
   const crashMap = {};
@@ -1240,7 +1224,7 @@ function runMontecarlo() {
     const sf = idx === 0 ? 1.0 : idx === 1 ? 0.65 : 0.45;
     const cw2 = getEquityWeight(portfolio, age + cy);
     const cr2 = eqCR * sf * cw2 + BOND_RALLY_RATE * (1 - cw2);
-    const cuf2 = cw2 > 0 ? Math.pow(Math.pow(1 / (1 + eqCR * sf), 1 / RECOVERY_YEARS), RECOVERY_CATCHUP) : 1;
+    const cuf2 = cw2 > 0 ? Math.pow(1 / (1 + eqCR * sf), 1 / RECOVERY_YEARS) : 1;
     crashMap[cy] = { rate: cr2, cuf: cuf2, acw: cw2, sf };
   });
 
@@ -2539,18 +2523,6 @@ function runDecumuloHistorical() {
   const { startPortfolio: sP, withdrawal: w0, years: Y, portfolio: port, strategy: strat, inflation: inflFixed, ter } = decState;
   const terRateM = ter / 100 / 12;
 
-  // Gate: i preset con leva / managed futures (efficient core, return stacking) e i
-  // custom con trend/carry non hanno serie storica coerente in HIST_MONTHLY (solo
-  // azioni/obbligazioni/oro). Simularli falserebbe rischio e decorrelazione.
-  const DEC_HIST_SKIP = { ec_us_9060: 1, ec_glob_9060: 1, return_stack: 1 };
-  const customNonBT = port === 'custom' && typeof customPortfolioIsNonBacktestable === 'function' && customPortfolioIsNonBacktestable();
-  if (DEC_HIST_SKIP[port] || customNonBT) {
-    const lbl = (typeof getPortLabel === 'function') ? getPortLabel(port) : port;
-    const err = new Error(`Backtest storico non disponibile per "${lbl}": i portafogli con leva (efficient core, return stacking) o con trend following / carry non hanno una serie storica coerente nel dataset 1970-2024 (azioni/obbligazioni/oro). Usa il Monte Carlo Avanzato con un modello parametrico.`);
-    err.decHistBlocked = true;
-    throw err;
-  }
-
   // Pesi del portafoglio
   const decAge = state.age + state.years;
   const eqW = getEquityWeight(port, decAge);
@@ -2800,7 +2772,6 @@ function importFromSim() {
   decState.startPortfolio = dN[state.years].value;
   document.getElementById('sDecStart').value = Math.min(decState.startPortfolio, 5000000);
   document.getElementById('lDecStart').textContent = fmt(decState.startPortfolio);
-  document.getElementById('sDecStart').dispatchEvent(new Event('input', { bubbles: true }));
   document.getElementById('importStatus').textContent = `Importato: ${fmtFull(decState.startPortfolio)} (scenario base, età ${state.age + state.years} anni)`;
   renderDecumulo();
 }
@@ -3128,85 +3099,6 @@ function makeEditable(labelId, sliderId, stateKey, fmtFn, opts) {
 }
 makeEditable('lW', 'sW', 'w');
 makeEditable('lP', 'sP', 'pac');
-
-// ── Campo numerico digitabile accanto agli slider di importo ──────────────
-// Inserisce un <input type="number"> sincronizzato bidirezionalmente con lo
-// slider: digitare aggiorna lo slider (e dispatcha 'input', riusando tutta la
-// logica esistente di bindSlider/oninput); muovere lo slider aggiorna il campo.
-// Pensato per importi elevati (milioni) dove il trascinamento è impreciso.
-// withEuro=true mostra il prefisso €. Allinea allo step e limita al range solo
-// al blur/Invio, così durante la digitazione non si "salta".
-function attachNumberBox(sliderId, withEuro = true) {
-  const sld = document.getElementById(sliderId);
-  if (!sld || sld._numBoxAttached) return;
-  sld._numBoxAttached = true;
-
-  const wrap = document.createElement('div');
-  wrap.className = withEuro ? 'num-box-wrap' : '';
-  const box = document.createElement('input');
-  box.type = 'number';
-  box.className = 'num-box';
-  box.min = sld.min; box.max = sld.max; box.step = sld.step;
-  box.setAttribute('inputmode', 'numeric');
-  box.value = sld.value;
-  box.setAttribute('aria-label', 'Inserisci il valore esatto');
-  wrap.appendChild(box);
-  sld._numBox = box; // riferimento per sincronizzazione programmatica
-  // Inserisce subito dopo lo slider (o dopo gli hint di range se presenti)
-  const hints = sld.nextElementSibling && sld.nextElementSibling.classList?.contains('range-hints')
-    ? sld.nextElementSibling : null;
-  (hints || sld).insertAdjacentElement('afterend', wrap);
-
-  // slider → box
-  const syncFromSlider = () => { if (document.activeElement !== box) box.value = sld.value; };
-  sld.addEventListener('input', syncFromSlider);
-
-  // box → slider (in tempo reale mentre si digita, senza clamp brusco)
-  box.addEventListener('input', () => {
-    if (box.value === '' || box.value === '-') return;       // consente digitazione parziale
-    let n = parseFloat(box.value);
-    if (isNaN(n)) return;
-    const min = +sld.min, max = +sld.max;
-    n = Math.max(min, Math.min(max, n));
-    sld.value = n;
-    sld.dispatchEvent(new Event('input', { bubbles: true })); // riusa logica esistente
-  });
-  // al blur/Invio: pulisce, allinea allo step e mostra il valore finale
-  const finalize = () => {
-    let n = parseFloat(box.value);
-    const min = +sld.min, max = +sld.max, step = +sld.step || 1;
-    if (isNaN(n)) n = +sld.value;
-    n = Math.max(min, Math.min(max, n));
-    n = Math.round(n / step) * step;
-    sld.value = n;
-    box.value = n;
-    sld.dispatchEvent(new Event('input', { bubbles: true }));
-  };
-  box.addEventListener('blur', finalize);
-  box.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); box.blur(); } });
-}
-
-// Applica i campi numerici a tutti gli slider di IMPORTO (€).
-// Simulatore principale, soglia optionality, decumulo, backtest, A/B, goal.
-[
-  'sW', 'sP', 'sO',           // simulatore: patrimonio, PAC, soglia optionality
-  'sDecStart', 'sDecW',       // decumulo: patrimonio iniziale + prelievo annuo
-  'sMcW',                     // monte carlo: prelievo annuo target
-  'sBtW', 'sBtPac',           // backtest: capitale + PAC
-  'sAbPac',                   // confronto A/B: PAC B
-  'sGoalTarget', 'sGoalPAC', 'sGoalW0', // calcolatore obiettivo
-].forEach(id => attachNumberBox(id, true));
-// Prelievo annuo decumulo, se presente
-if (document.getElementById('sDecWd')) attachNumberBox('sDecWd', true);
-
-// Helper globale: dopo aver impostato slider.value via codice, aggiorna il box.
-function syncNumBox(sliderId) {
-  const sld = document.getElementById(sliderId);
-  if (sld && sld._numBox && document.activeElement !== sld._numBox) sld._numBox.value = sld.value;
-}
-window.syncNumBox = syncNumBox;
-
-
 bindSlider('sA', 'lA', 'age', v => v + ' anni');
 bindSlider('sY', 'lY', 'years', v => v + ' anni');
 bindSlider('sO', 'lO', 'opt', v => '€' + fmtN(v));
@@ -3327,11 +3219,11 @@ function updateRetInfo() {
     }
 
     const btnLabel = isOn
-      ? `⚡ CAPE-adj <span style="font-size:10px;opacity:.7">(valutazioni live)</span>`
-      : `📊 Storico puro <span style="font-size:10px;opacity:.7">(baseline)</span>`;
+      ? `⚡ CAPE-adj <span style="font-size:10px;opacity:.7">(55% CAPE + 45% DMS)</span>`
+      : `📊 Storico puro <span style="font-size:10px;opacity:.7">(DMS 2024)</span>`;
     const btnTitle = isOn
-      ? 'Rendimenti = baseline + scostamento dovuto alle valutazioni correnti (CAPE/yield), calcolato con metodo coerente col baseline. Clicca per disattivare.'
-      : 'Rendimenti baseline forward-looking (non aggiustati per le valutazioni di mercato correnti). Clicca per applicare lo scostamento da CAPE/yield live.';
+      ? 'Rendimenti ricalibrati con CAPE live. Clicca per usare solo dati storici DMS 2024.'
+      : 'Rendimenti storici puri DMS 2024 (non aggiustati per valutazioni). Clicca per attivare CAPE-adj.';
 
     const parts = [];
     if (d.cape_sp500)    parts.push(`CAPE S&P ${d.cape_sp500.toFixed(1)}`);
@@ -4296,7 +4188,6 @@ async function generatePDF() {
         ['Azioni', ((portMeta.eq || 0) * 100).toFixed(0) + '%'],
         ['Obbligazioni', ((portMeta.ob || 0) * 100).toFixed(0) + '%'],
         ['Oro / commodities', ((portMeta.gold || 0) * 100).toFixed(0) + '%'],
-        ['Trend following / managed futures', ((portMeta.trend || 0) * 100).toFixed(0) + '%'],
         ['Cash / liquidita', ((portMeta.cash || 0) * 100).toFixed(0) + '%'],
         ['Rendimento reale storico', ((portMeta.realRet || 0) * 100).toFixed(2) + '% /a'],
         ['Beta vs inflazione', String(portMeta.inflBeta ?? 'n/d')],
