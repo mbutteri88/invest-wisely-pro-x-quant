@@ -655,6 +655,29 @@ function _syncEFStateFromSimulator() {
       return;
     }
   }
+  // Per i preset: usa le ASSET CLASS REALI della loro composizione (PRESET_COMPOSITION),
+  // le stesse con cui getCurrentPortfolioPoint calcola il triangolo "Il tuo portafoglio".
+  // FIX: prima la frontiera era costruita su un set generico (eq_sviluppati/ob_glob_agg/
+  // gold/cash + em/infl/commodities) DIVERSO dagli asset realmente posseduti dal preset.
+  // Risultato: il triangolo (μ/σ del preset reale) veniva confrontato con una frontiera
+  // di un altro universo di asset → Max Sharpe/Min Varianza fuorvianti e il warning
+  // "esiste un'allocazione più efficiente tra le asset class selezionate" non riferito
+  // alle asset class effettivamente selezionate. Ora il confronto è apples-to-apples.
+  const comp = (typeof PRESET_COMPOSITION !== 'undefined') ? PRESET_COMPOSITION[state.portfolio] : null;
+  if (comp) {
+    const compKeys = Object.keys(comp).filter(k => ASSET_CLASSES[k]);
+    // La frontiera richiede almeno 2 asset class distinte. I preset con 1 solo asset
+    // (es. eq100, ob100) non hanno una frontiera: aggiungiamo un secondo asset coerente
+    // così la curva è disegnabile e il confronto resta sensato.
+    if (compKeys.length >= 2) { _efState.assets = compKeys; return; }
+    if (compKeys.length === 1) {
+      const solo = compKeys[0];
+      const partner = solo.startsWith('eq') || solo.startsWith('fat') || solo === 'reits'
+        ? 'ob_glob_agg' : 'eq_sviluppati';
+      _efState.assets = [solo, partner];
+      return;
+    }
+  }
   // Altrimenti usa un set di default basato sul tipo di portafoglio
   const p = PORT[state.portfolio];
   if (!p) { _efState.assets = ['eq_sviluppati','ob_glob_agg','gold','cash']; return; }
@@ -845,6 +868,9 @@ function _updateFrontierStats(curr, maxS, minV) {
         ? `⚠️ Il tuo portafoglio ha uno Sharpe ratio <strong>${fmtS(curr.sharpe)}</strong> vs <strong>${fmtS(maxS.sharpe)}</strong> del portafoglio Max Sharpe — esiste un'allocazione più efficiente tra le asset class selezionate.`
         : `✓ Il tuo portafoglio ha uno Sharpe ratio <strong>${fmtS(curr.sharpe)}</strong>, vicino al massimo ottimale (<strong>${fmtS(maxS.sharpe)}</strong>) — allocazione efficiente.`
       }
+      ${curr.leverage && curr.leverage > 1.0
+        ? `<br><span style="font-size:11px;color:var(--text3)">ℹ️ Il tuo portafoglio usa leva (esposizione ×${curr.leverage.toFixed(2)}): la frontiera mostra portafogli non a leva, quindi il confronto di Sharpe è solo indicativo. La leva sposta il punto lungo la Capital Market Line, non sulla frontiera.</span>`
+        : ''}
     </div>` : ''}
   `;
 }
