@@ -1041,15 +1041,18 @@ function getCrashYears(mode, timing, years) {
   // Vincoli: gap minimo cy2-cy1 ≥ 7 anni; gap minimo cy3-cy2 ≥ 6 anni.
   // Con timing='late' i vincoli prevalgono sul timing tardivo, anticipando
   // i crash precedenti per rispettare le distanze minime.
+  // Tutti i risultati passano da _sanitizeCrashYears, che garantisce anni
+  // distinti, crescenti e dentro [1, years-1] anche su orizzonti brevi in cui
+  // i gap minimi non sono soddisfacibili (es. 3 crash su < 13 anni).
   const cy1Raw = getCrashYear(timing, years);
-  if (mode === 'single' || !mode) return [Math.max(1, Math.min(years - 1, cy1Raw))];
+  if (mode === 'single' || !mode) return _sanitizeCrashYears([cy1Raw], years);
 
   if (mode === 'double') {
     // Vogliamo cy1 < cy2, cy2 ≤ years-2, gap ≥ 8
     // Se timing='late', anticipiamo cy1 per fare spazio a cy2
     let cy2 = Math.min(years - 2, Math.max(cy1Raw + 8, Math.round(years * 0.62)));
     let cy1 = Math.max(1, Math.min(cy1Raw, cy2 - 8));
-    return [cy1, cy2];
+    return _sanitizeCrashYears([cy1, cy2], years);
   }
 
   if (mode === 'triple') {
@@ -1068,9 +1071,37 @@ function getCrashYears(mode, timing, years) {
       cy2 = Math.max(cy1 + 7, Math.round(years * 0.55));
       cy3 = Math.min(years - 1, Math.max(cy2 + 6, Math.round(years * 0.82)));
     }
-    return [cy1, cy2, cy3];
+    return _sanitizeCrashYears([cy1, cy2, cy3], years);
   }
-  return [Math.max(1, Math.min(years - 1, cy1Raw))];
+  return _sanitizeCrashYears([cy1Raw], years);
+}
+
+// Garantisce che gli anni di crash siano: dentro [1, years-1], interi, distinti
+// e in ordine crescente. Se i valori grezzi si accavallano o escono dall'intervallo
+// (tipico con 3 crash su orizzonti brevi, dove i gap minimi non sono soddisfacibili),
+// ridistribuisce gli anni il piu uniformemente possibile preservando l'ordine.
+function _sanitizeCrashYears(arr, years) {
+  const maxY = Math.max(1, years - 1);
+  // Se non c'e spazio fisico per N anni distinti in [1, maxY], riduci il numero
+  // di crash al massimo rappresentabile (caso degenere: orizzonti molto brevi).
+  let n = Math.min(arr.length, maxY);
+  let src = arr.slice(0, n);
+  // 1) clamp + arrotonda + ordina
+  let ys = src.map(v => Math.max(1, Math.min(maxY, Math.round(v)))).sort((a, b) => a - b);
+  // 2) forza distinti e crescenti spingendo in avanti
+  for (let i = 1; i < n; i++) if (ys[i] <= ys[i - 1]) ys[i] = ys[i - 1] + 1;
+  // 3) se l'ultimo sfora, comprimi all'indietro mantenendo distinti
+  if (ys[n - 1] > maxY) {
+    ys[n - 1] = maxY;
+    for (let i = n - 2; i >= 0; i--) if (ys[i] >= ys[i + 1]) ys[i] = ys[i + 1] - 1;
+  }
+  // 4) se non c'e abbastanza spazio per n anni distinti (es. n>maxY), distribuisci uniformemente
+  if (ys[0] < 1) {
+    ys = [];
+    for (let i = 0; i < n; i++) ys.push(Math.max(1, Math.min(maxY, 1 + Math.round(i * (maxY - 1) / Math.max(1, n - 1)))));
+    for (let i = 1; i < n; i++) if (ys[i] <= ys[i - 1]) ys[i] = ys[i - 1] + 1;
+  }
+  return ys;
 }
 
 // Volatilità "dynCorr" portafoglio — usa correlazioni stress in crisi

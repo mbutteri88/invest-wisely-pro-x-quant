@@ -475,23 +475,27 @@ function computeVaRCVaR(mu, vol, horizon, initialValue, ter) {
 
   const results = {};
 
+  // Helper: se il VaR/CVaR è negativo (il portafoglio guadagna anche nello scenario
+  // sfavorevole su questo orizzonte) restituiamo null invece di un numero negativo.
+  // null viene gestito dal render con la label "nessuna perdita attesa a questo livello".
+  const clampLoss = v => (v !== null && v < 0) ? null : v;
+
   // ── Metodo 1: Parametrico (Gaussiano) ────────────────────────────────────
   const z95 = 1.6449;
   const z99 = 2.3263;
   const z999= 3.0902;
-  // VaR: usa μ geometrico (μ - σ²/2) per coerenza con GBM log-normale
+  // VaR: usa μ geometrico (μ - σ²/2) per coerenza con GBM log-normale (correzione Itô)
   const muGeo = muNet - vol*vol/2; // drift geometrico
   results.param = {
-    var95:  V * (1 - Math.exp(muGeo*h - z95  * volH)),
-    var99:  V * (1 - Math.exp(muGeo*h - z99  * volH)),
-    var999: V * (1 - Math.exp(muGeo*h - z999 * volH)),
+    var95:  clampLoss(V * (1 - Math.exp(muGeo*h - z95  * volH))),
+    var99:  clampLoss(V * (1 - Math.exp(muGeo*h - z99  * volH))),
+    var999: clampLoss(V * (1 - Math.exp(muGeo*h - z999 * volH))),
     // CVaR parametrico log-normale: E[loss | loss > VaR]
-    // Formula corretta: V*(1 - exp(μh + σ²h/2)*N(-z - σ√h)/(1-α))
-    // dove μh+σ²h/2 = E[V_h/V] (momento primo log-normale)
-    // Nota: muH + volH² = (μ-σ²/2)h + σ²h = μh = muNet*h
-    cvar95:  V * (1 - Math.exp(muNet*h) * _normCDF(-z95  - volH) / 0.05),
-    cvar99:  V * (1 - Math.exp(muNet*h) * _normCDF(-z99  - volH) / 0.01),
-    cvar999: V * (1 - Math.exp(muNet*h) * _normCDF(-z999 - volH) / 0.001),
+    // Formula: V*(1 - exp(μNet·h)*N(-z - σ√h)/(1-α))
+    // Nota: muH + volH² = (μ-σ²/2)h + σ²h = μNet·h (momento primo log-normale)
+    cvar95:  clampLoss(V * (1 - Math.exp(muNet*h) * _normCDF(-z95  - volH) / 0.05)),
+    cvar99:  clampLoss(V * (1 - Math.exp(muNet*h) * _normCDF(-z99  - volH) / 0.01)),
+    cvar999: clampLoss(V * (1 - Math.exp(muNet*h) * _normCDF(-z999 - volH) / 0.001)),
   };
 
   // ── Metodo 2: Monte Carlo (10.000 simulazioni) ────────────────────────────
@@ -503,15 +507,15 @@ function computeVaRCVaR(mu, vol, horizon, initialValue, ter) {
     returns.push(r);
   }
   returns.sort((a,b)=>a-b);
-  const losses = returns.map(r => -r * V); // perdite positive
+  const losses = returns.map(r => -r * V); // perdite positive = perdite reali
   losses.sort((a,b)=>a-b);
   results.mc = {
-    var95:  _percentile(losses, 0.95),
-    var99:  _percentile(losses, 0.99),
-    var999: _percentile(losses, 0.999),
-    cvar95:  _mean(losses.slice(Math.floor(N_MC*0.95))),
-    cvar99:  _mean(losses.slice(Math.floor(N_MC*0.99))),
-    cvar999: _mean(losses.slice(Math.floor(N_MC*0.999))),
+    var95:  clampLoss(_percentile(losses, 0.95)),
+    var99:  clampLoss(_percentile(losses, 0.99)),
+    var999: clampLoss(_percentile(losses, 0.999)),
+    cvar95:  clampLoss(_mean(losses.slice(Math.floor(N_MC*0.95)))),
+    cvar99:  clampLoss(_mean(losses.slice(Math.floor(N_MC*0.99)))),
+    cvar999: clampLoss(_mean(losses.slice(Math.floor(N_MC*0.999)))),
   };
 
   // ── Metodo 3: t-Student (fat tails, df calibrato su vol del portafoglio) ─
@@ -522,16 +526,28 @@ function computeVaRCVaR(mu, vol, horizon, initialValue, ter) {
   const t99  = _tQuantile(0.99,  df);
   const t999 = _tQuantile(0.999, df);
   const scale = volH * Math.sqrt((df-2)/df);
+  // FIX: usa muGeo (drift geometrico con correzione Itô σ²/2) invece di muH aritmetico,
+  // coerente col metodo Gaussiano. Su 10 anni e σ=7.5% la differenza è ~2.8%.
   results.tstud = {
-    var95:  V * (1 - Math.exp(muH - t95  * scale)),
-    var99:  V * (1 - Math.exp(muH - t99  * scale)),
-    var999: V * (1 - Math.exp(muH - t999 * scale)),
+    var95:  clampLoss(V * (1 - Math.exp(muGeo*h - t95  * scale))),
+    var99:  clampLoss(V * (1 - Math.exp(muGeo*h - t99  * scale))),
+    var999: clampLoss(V * (1 - Math.exp(muGeo*h - t999 * scale))),
     df,
-    // CVaR t-Student (approssimazione numerica)
-    cvar95:  V * (1 - Math.exp(muH - _tCVaR(0.95,  df) * scale)),
-    cvar99:  V * (1 - Math.exp(muH - _tCVaR(0.99,  df) * scale)),
-    cvar999: V * (1 - Math.exp(muH - _tCVaR(0.999, df) * scale)),
+    cvar95:  clampLoss(V * (1 - Math.exp(muGeo*h - _tCVaR(0.95,  df) * scale))),
+    cvar99:  clampLoss(V * (1 - Math.exp(muGeo*h - _tCVaR(0.99,  df) * scale))),
+    cvar999: clampLoss(V * (1 - Math.exp(muGeo*h - _tCVaR(0.999, df) * scale))),
   };
+
+  // ── Coerenza VaR/CVaR: se VaR(α) = null (nessuna perdita), CVaR(α) = null ──
+  // Per definizione CVaR(α) = E[perdita | perdita > VaR(α)].
+  // Se VaR(α) è nullo (il portafoglio guadagna anche nel percentile α sfavorevole),
+  // il CVaR allo stesso livello non può essere positivo — sarebbe matematicamente
+  // incoerente. Applichiamo la regola a tutti e tre i metodi.
+  for (const m of [results.param, results.mc, results.tstud]) {
+    if (m.var95  === null) m.cvar95  = null;
+    if (m.var99  === null) m.cvar99  = null;
+    if (m.var999 === null) m.cvar999 = null;
+  }
 
   return results;
 }
@@ -861,8 +877,11 @@ function _renderVaRView() {
 
   const r = computeVaRCVaR(mu, vol, horizon, value, ter);
   const portLabel = key==='custom'?'Custom':(PORT[key]?.label||key);
-  const fmt  = v => v >= 0 ? '−€'+Math.round(v).toLocaleString('it-IT') : '+€'+Math.round(-v).toLocaleString('it-IT');
-  const fmtP = (v, base) => v >= 0 ? '−'+(v/base*100).toFixed(1)+'%' : '+'+((-v)/base*100).toFixed(1)+'%';
+  // fmt/fmtP: null = "nessuna perdita attesa" (VaR negativo su orizzonte lungo)
+  const fmt  = v => v === null ? '<span style="color:var(--green);font-size:11px">nessuna perdita attesa</span>'
+                               : v >= 0 ? '−€'+Math.round(v).toLocaleString('it-IT')
+                                        : '+€'+Math.round(-v).toLocaleString('it-IT');
+  const fmtP = (v, base) => v === null ? '' : v >= 0 ? '−'+(v/base*100).toFixed(1)+'%' : '+'+((-v)/base*100).toFixed(1)+'%';
 
   const methods = [
     { key:'param', label:'Parametrico (Gaussiano)', color:'var(--blue)',
@@ -926,7 +945,10 @@ function _renderVaRView() {
     </div>
 
     <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px;font-size:12px;color:var(--text3);line-height:1.7">
-      <strong>Come leggere il VaR:</strong> un VaR 99% di −€${Math.round(r.mc.var99).toLocaleString('it-IT')} su orizzonte ${horizon} anno/i significa che nel 99% degli scenari simulati la perdita non supererà questa soglia. Nel restante 1% degli scenari (eventi rari ma possibili), la perdita attesa (CVaR 99%) è −€${Math.round(r.mc.cvar99).toLocaleString('it-IT')}.<br>
+      ${r.mc.var99 !== null
+        ? `<strong>Come leggere il VaR:</strong> un VaR 99% di −€${Math.round(r.mc.var99).toLocaleString('it-IT')} su orizzonte ${horizon} anno/i significa che nel 99% degli scenari simulati la perdita non supererà questa soglia. Nel restante 1% degli scenari (eventi rari ma possibili), la perdita attesa (CVaR 99%) è ${r.mc.cvar99 !== null ? '−€'+Math.round(r.mc.cvar99).toLocaleString('it-IT') : 'assente (portafoglio in guadagno anche in questo scenario)'}.<br>`
+        : `<strong>Nota sull'orizzonte ${horizon} anni:</strong> con un rendimento atteso di ${((mu-(ter||0)/100)*100).toFixed(1)}%/a e volatilità ${(vol*100).toFixed(1)}%/a, il portafoglio è atteso in guadagno anche negli scenari avversi al 95–99% su questo orizzonte. Il VaR risulta nullo: non significa assenza di rischio, ma che il drift positivo supera le perdite probabilistiche a questo livello di confidenza. Il VaR 99.9% (coda estrema) rimane significativo.<br>`
+      }
       <strong>CVaR vs VaR:</strong> il CVaR (Expected Shortfall) è preferito dai regolatori (Basilea III, SOLVENCY II) perché misura <em>quanto si perde</em> quando si va oltre il VaR, non solo il punto di soglia. È la misura di rischio coerente per eccellenza (Artzner et al., 1999).
     </div>
   `;
