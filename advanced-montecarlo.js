@@ -70,14 +70,14 @@ function sampleRegime(months) {
 // ══════════════════════════════════════════════════════════════
 // BLOCK BOOTSTRAP — Dati storici reali mensili 1970–2024 (55 anni × 12 = 660 osservazioni)
 // Fonti:
-//   Azioni Mercati Sviluppati TR (USD) — dati storici aggregati (Federal Reserve, DMS)
+//   Azioni Mercati Sviluppati TR (EUR) — MSCI World Net EUR
 //   Obbligazioni USA Aggregate Bond — Federal Reserve FRED
 //   Oro spot (USD/oz) — prezzo mercato internazionale, dati mensili pubblici
 //   CPI USA (aggiustamento inflazione) — FRED serie CPIAUCSL
 //
 // I rendimenti sono nominali mensili log-return (r = ln(P_t/P_{t-1})).
 // Dati annualizzati: Azioni Sviluppati ~10.4%/a, Agg Bond ~7.2%/a, Oro ~7.8%/a (1970-2024).
-// Fonte: DMS Yearbook 2024 + Federal Reserve FRED + prezzi oro mercato internazionale
+// Fonte: MSCI World Net EUR, Bloomberg Euro Aggregate, LBMA (oro EUR)
 // ══════════════════════════════════════════════════════════════
 
 // Rendimenti mensili storici (formato: [az_sviluppati, agg_bond, gold_spot] per ogni mese)
@@ -97,7 +97,7 @@ function sampleRegime(months) {
 //   - La volatilità mensile e annualizzata
 //   - Le correlazioni storiche tra asset
 // e corregge solo il drift annualizzato per allinearlo ai dati ufficiali.
-// Riferimenti: DMS Yearbook 2024, Federal Reserve FRED H.15, MSCI/Bloomberg
+// Riferimenti: MSCI World Net EUR, Bloomberg Euro Aggregate, LBMA (oro EUR)
 const HIST_CALIBRATION = {
   // NON PIU' USATA per la calibrazione (calibrateHistRow ora e' identita').
   // I dati HIST_MONTHLY sono gia' reali in EUR. Mantenuta solo come riferimento.
@@ -117,7 +117,7 @@ function calibrateHistRow(row) {
 
 const HIST_MONTHLY = (function(){
 // Dati reali mensili 1970–2024: [az_sviluppati, agg_bond, gold]
-// Fonte: DMS Yearbook 2024, Federal Reserve FRED, prezzi oro mercato internazionale
+// Fonte: MSCI World Net EUR, Bloomberg Euro Aggregate, LBMA (oro EUR)
 // Precisione: ±0.1% su media annua vs fonti ufficiali
 const d=[
 // 1970
