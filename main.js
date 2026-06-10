@@ -1014,7 +1014,7 @@ function getRateEco(portKey, ecoKey, year, startAge, ecoWin) {
       eqW    * anchorEq    * (eco.eqMult   - nrm.eqMult)
     + obW    * anchorOb    * (eco.obMult   - nrm.obMult)
     + goldW  * anchorGold  * (eco.goldMult - nrm.goldMult)
-    + trendW * anchorTrend * ((0.6 * eco.goldMult + 0.4 * eco.eqMult) - (0.6 * nrm.goldMult + 0.4 * nrm.eqMult))  // trend: media pesata gold/eq (non puro goldMult — MF ≠ oro in stagflazione)
+    + trendW * anchorTrend * (eco.goldMult - nrm.goldMult)
     + cashW  * ((eco.cashRet ?? nrm.cashRet) - nrm.cashRet)
   ) / wSum;
 
@@ -1082,7 +1082,7 @@ function blendedTaxRate(age) {
     const goldW  = Math.max(0, cp.goldW ?? 0);
     const cashW  = Math.max(0, cp.cashW ?? 0);
     const otherW = Math.max(0, cp.otherFullW ?? 0);  // trend/carry/commodities/reit/factor
-    // Oro, liquidità, trend following, commodities, REITs, fattori → aliquota piena (taxEq, 26%)
+    // Oro, liquidità, trend following, commodities, REIT, fattori → aliquota piena (taxEq, 26%)
     // Solo la quota obbligazionaria gode dell'aliquota ridotta (taxOb, 12.5% per gov IT/EU)
     // Normalizza per evitare somme > 1 (es. portafogli con leva implicita)
     const total = eqW + obW + goldW + cashW + otherW || 1;
@@ -1137,50 +1137,33 @@ function getCrashYears(mode, timing, years) {
   // i crash precedenti per rispettare le distanze minime.
   // Tutti i risultati passano da _sanitizeCrashYears, che garantisce anni
   // distinti, crescenti e dentro [1, years-1] anche su orizzonti brevi in cui
-  // i gap minimi non sono soddisfacibili (es. 3 crash su < 13 anni):
-  // su orizzonti molto brevi (< 13a) è corretto e realistico che il triplo crash
-  // risulti bloccato o compresso — tre crash ravvicinati non sono simulabili.
+  // i gap minimi non sono soddisfacibili (es. 3 crash su < 13 anni).
   const cy1Raw = getCrashYear(timing, years);
   if (mode === 'single' || !mode) return _sanitizeCrashYears([cy1Raw], years);
 
   if (mode === 'double') {
-    // cy2 ancorato alla posizione di timing nel piano (non a un percentile fisso),
-    // cy1 scalato di conseguenza mantenendo gap ≥ 8.
-    // Fix: cy1 resta vicino al timing anziché scivolare a 1 su orizzonti brevi.
-    let cy2, cy1;
-    if (timing === 'early') {
-      cy1 = Math.max(1, Math.min(3, years));
-      cy2 = Math.min(years - 2, Math.max(cy1 + 8, Math.round(years * 0.55)));
-    } else if (timing === 'mid') {
-      // cy2 centrato nel piano, cy1 ca. 8 anni prima
-      cy2 = Math.min(years - 2, Math.max(1, Math.round(years * 0.62)));
-      cy1 = Math.max(1, cy2 - 8);
-    } else { // late
-      // cy2 vicino al fondo, cy1 ≥ 8 anni prima — entrambi nella seconda metà se possibile
-      cy2 = Math.min(years - 2, Math.max(1, Math.round(years * 0.82)));
-      cy1 = Math.max(1, cy2 - 8);
-    }
+    // Vogliamo cy1 < cy2, cy2 ≤ years-2, gap ≥ 8
+    // Se timing='late', anticipiamo cy1 per fare spazio a cy2
+    let cy2 = Math.min(years - 2, Math.max(cy1Raw + 8, Math.round(years * 0.62)));
+    let cy1 = Math.max(1, Math.min(cy1Raw, cy2 - 8));
     return _sanitizeCrashYears([cy1, cy2], years);
   }
 
   if (mode === 'triple') {
-    // Fix: cy3 scala con years anche per timing='early'.
-    // Strategia uniforme: âncora i tre crash a frazioni del piano
-    // coerenti con il timing, poi rispetta i gap minimi.
-    let cy1, cy2, cy3;
+    // Vogliamo cy3 ≤ years-1, gap cy3-cy2 ≥ 6, gap cy2-cy1 ≥ 7
+    // Strategia: posiziona cy3 vicino a 'timing', poi cy2 e cy1 a ritroso
+    let cy3 = Math.min(years - 1, Math.max(cy1Raw, Math.round(years * 0.82)));
+    let cy2 = Math.max(1, cy3 - 6);
+    let cy1 = Math.max(1, cy2 - 7);
+    // Se timing è 'early', spingiamo tutto in avanti il meno possibile
     if (timing === 'early') {
-      // I crash iniziano presto e si distribuiscono sul piano a intervalli regolari
       cy1 = Math.max(1, Math.min(3, years));
-      cy2 = Math.min(years - 7, Math.max(cy1 + 7, Math.round(years * 0.40)));
-      cy3 = Math.min(years - 1, Math.max(cy2 + 6, Math.round(years * 0.72)));
+      cy2 = Math.min(years - 7, cy1 + 7);
+      cy3 = Math.min(years - 1, cy2 + 6);
     } else if (timing === 'mid') {
-      cy1 = Math.max(1, Math.round(years * 0.25));
-      cy2 = Math.max(cy1 + 7, Math.round(years * 0.50));
-      cy3 = Math.min(years - 1, Math.max(cy2 + 6, Math.round(years * 0.78)));
-    } else { // late
-      cy3 = Math.min(years - 1, Math.max(1, Math.round(years * 0.85)));
-      cy2 = Math.max(1, Math.min(cy3 - 6, Math.round(years * 0.60)));
-      cy1 = Math.max(1, cy2 - 7);
+      cy1 = Math.max(1, Math.round(years * 0.30));
+      cy2 = Math.max(cy1 + 7, Math.round(years * 0.55));
+      cy3 = Math.min(years - 1, Math.max(cy2 + 6, Math.round(years * 0.82)));
     }
     return _sanitizeCrashYears([cy1, cy2, cy3], years);
   }
@@ -1306,7 +1289,7 @@ function project(scenario, withSeq, terOverride = null, portOverride = null) {
     r -= terRate;
     const midW = w2 + (annPac + pic - exp) / 2;
     const aRG = midW * r;
-    w2 += annPac + pic - exp + aRG;
+    w2 = Math.max(0, w2 + annPac + pic - exp + aRG);   // il capitale non può andare sotto zero: un'uscita superiore al montante lo azzera
     inv += annPac + pic;
     const aRN = aRG > 0 ? aRG * (1 - txRate) : aRG;
     const evts = [];
@@ -1426,7 +1409,7 @@ function runMontecarlo() {
 
       if (crashInfo) {
         // Crash year: apply dynamic corr penalty if enabled
-        const dynPenalty = seq.dynCorr ? 0.03 * crashInfo.sf : 0;
+        const dynPenalty = seq.dynCorr ? 0.025 * crashInfo.sf : 0;
         r = crashInfo.rate - dynPenalty;
       } else if (inRecovery) {
         const cy = inRecovery;
@@ -2651,7 +2634,6 @@ function simulateDecumulo(sc) {
   const decCrashMap = {};
   if (decSeq.on) {
     const eqCRdec = (SEQ_RATES[decSeq.severity] ?? -0.35);
-    // timing/mode identici al Simulatore: riusa getCrashYears (già robusta)
     const decCrashYears = getCrashYears(decSeq.mode || 'single', decSeq.timing, Y);
     decCrashYears.forEach((cy, idx) => {
       const sf = idx === 0 ? 1.0 : idx === 1 ? 0.65 : 0.45;
@@ -3942,10 +3924,7 @@ async function exportExcel() {
       const vB = dB[i]?.value ?? vN, vW = dW[i]?.value ?? vN;
       const gain = Math.max(0, vN - inv);
       const netto = vN - gain * txF;
-      // IRR money-weighted (rendimento annuo REALE del piano): tiene conto del
-      // capitale iniziale E di tutti i versamenti PAC fatti nel tempo. Un semplice
-      // (valore/capitale_iniziale)^(1/anni) sovrastimerebbe il rendimento perché
-      // attribuirebbe alla crescita di mercato anche il denaro versato col PAC.
+      // IRR money-weighted: tiene conto del capitale iniziale E dei versamenti PAC.
       const cagr = i > 0 ? (planIRR(dN, i) * 100).toFixed(2) : 0;
       return [d.year ?? i, d.age ?? age + i, Math.round(inv), Math.round(vN),
               Math.round(vB), Math.round(vW), Math.round(vN - inv), Math.round(netto), +cagr];
@@ -4933,7 +4912,7 @@ async function generatePDF() {
     narrative(
       'Simulazione del percorso mensile preciso del portafoglio attuale durante le 6 principali crisi macro 1970-2024. ' +
       'A differenza del backtesting PAC (piani con versamenti), questa analisi usa uno snapshot del capitale iniziale senza contributi aggiuntivi. ' +
-      'I rendimenti mensili provengono da HIST_MONTHLY (DMS Yearbook 2024, FRED). TER applicato mensilmente. ' +
+      'I rendimenti mensili provengono da HIST_MONTHLY (ancorati a MSCI World Net EUR, Bloomberg Euro Aggregate, oro LBMA in EUR). TER applicato mensilmente. ' +
       'I pesi sono quelli attuali: Az.' + Math.round(getEquityWeight(btPortKeyPDF, age)*100) + '% ' +
       'Ob.' + Math.round(Math.max(0, 1 - getEquityWeight(btPortKeyPDF,age) - getGoldWeight(btPortKeyPDF) - getCashWeight(btPortKeyPDF))*100) + '% ' +
       'Au.' + Math.round(getGoldWeight(btPortKeyPDF)*100) + '% ' +
@@ -5481,6 +5460,93 @@ async function generatePDF() {
       margin: { left: ML, right: MR }
     });
     y = doc.lastAutoTable.finalY + 6;
+
+    // ─────────── 9b. LETTURA RAGIONATA DEI RISULTATI (narrativa dinamica) ───────────
+    try {
+      sHdr('Lettura Ragionata dei Tuoi Risultati', PUR);
+      narrative('La presente sezione interpreta i numeri delle pagine precedenti in forma discorsiva. Il suo scopo non e ripetere i dati, ma spiegare cosa significano, quali ipotesi li sostengono e quali sono i punti piu fragili. Va letta come una guida critica, non come una conferma del risultato.');
+      y += 1;
+
+      // -- Dati derivati per la narrazione (da variabili gia calcolate) --
+      const mult     = inv > 0 ? vN / inv : 0;                         // moltiplicatore lordo nominale
+      const gainNom  = vN - inv;                                        // plusvalenza nominale
+      const erosPct  = dF > 0 ? (1 - 1 / dF) * 100 : 0;                 // erosione potere acquisto %
+      const realMult = inv > 0 ? realN / inv : 0;                       // moltiplicatore reale
+      const taxPct   = txF * 100;                                       // aliquota fiscale blended
+      const beta     = portMeta.inflBeta ?? 0;
+      const vol      = (portMeta.vol ?? 0) * 100;                       // volatilita annua %
+      const spreadPO = nO > 0 ? (nO - nP) / nO : 0;                     // ampiezza forbice scenari
+      const pacAnnuo = pac * 12;
+      const mcProb   = (mc && typeof mc.successRate === 'number') ? mc.successRate : null; // 0-100 o null
+      const eqW      = portMeta.eq ?? 0;
+      const cagrNom  = (inv > 0 && years > 0 && vN > 0) ? (Math.pow(vN / Math.max(inv, 1), 1 / years) - 1) * 100 : 0; // proxy CAGR sul versato
+      const muNom    = (portMeta.normal ?? 0) * 100;                    // rendimento atteso nominale del portafoglio
+      const taxEur   = eT * vN;                                         // tasse stimate in euro
+
+      // ===== 1. Il risultato in sintesi =====
+      subHdr('1. Il risultato in sintesi');
+      var p1 = `Su un orizzonte di ${years} anni `;
+      if (pacAnnuo > 0 && w > 0)      p1 += `il piano combina un capitale iniziale di ${fmtFull(w)} con versamenti periodici (PAC) per ${fmtFull(pacAnnuo)}/anno, `;
+      else if (pacAnnuo > 0)          p1 += `il piano si basa su versamenti periodici (PAC) per ${fmtFull(pacAnnuo)}/anno, `;
+      else                            p1 += `il piano si basa su un capitale iniziale di ${fmtFull(w)} senza versamenti successivi, `;
+      p1 += `per un capitale complessivamente conferito di ${fmtFull(inv)}. Nello scenario centrale la proiezione raggiunge ${fmtFull(vN)} lordi nominali, equivalenti a un moltiplicatore di ${mult.toFixed(2)} volte il versato`;
+      p1 += pacAnnuo > 0 ? `, ossia un rendimento medio annuo composto (CAGR) di circa ${cagrNom.toFixed(1)}% sul capitale conferito.` : ` e a un CAGR di circa ${muNom.toFixed(1)}%.`;
+      narrative(p1);
+      var p1b = '';
+      if (gainNom > inv)      p1b = `Il dato piu significativo e che la quota generata dai rendimenti (${fmtFull(gainNom)}) supera il capitale versato: oltre meta del risultato finale non deriva da quanto hai messo, ma dalla capitalizzazione composta degli utili reinvestiti. Questo effetto cresce in modo non lineare con il tempo ed e la ragione per cui l'orizzonte temporale e la variabile piu potente di tutto il piano.`;
+      else if (gainNom > 0)   p1b = `La componente di rendimento (${fmtFull(gainNom)}) resta inferiore al capitale versato: e un profilo tipico degli orizzonti intermedi o dei portafogli prudenti, in cui la capitalizzazione composta non ha ancora avuto il tempo o il rendimento per diventare dominante.`;
+      else                    p1b = `Su questo orizzonte la capitalizzazione composta incide in misura marginale: il risultato dipende quasi interamente dai versamenti, non dalla crescita del mercato.`;
+      if (p1b) narrative(p1b);
+
+      // ===== 2. Nominale contro reale: il dato che conta =====
+      subHdr('2. Valore nominale contro valore reale');
+      var p2 = `I ${fmtFull(vN)} della proiezione sono espressi in euro nominali, cioe non corretti per l'inflazione. Con un tasso d'inflazione ipotizzato del ${inflBottom.toFixed(1)}% annuo, su ${years} anni il potere d'acquisto si riduce del ${erosPct.toFixed(0)}%: in termini di beni e servizi acquistabili oggi, quel montante equivale a ${fmtFull(realN)}. `;
+      p2 += `Il moltiplicatore reale scende quindi da ${mult.toFixed(2)}x a ${realMult.toFixed(2)}x. `;
+      p2 += `E questa la cifra su cui ragionare per qualunque obiettivo di spesa futura, perche misura cosa potrai effettivamente comprare, non quanti euro vedrai sul conto.`;
+      narrative(p2);
+      var p2b = `Sul piano fiscale, applicando un'aliquota media stimata del ${taxPct.toFixed(1)}% sulle sole plusvalenze, l'imposizione sottrae circa ${fmtFull(taxEur)} al risultato lordo, portando il netto nominale a ${fmtFull(nN)}. `;
+      p2b += `La tassazione italiana sul capital gain e dovuta al realizzo: finche non si vende, l'imposta resta differita e continua a capitalizzare a tuo favore (vantaggio del tax deferral).`;
+      narrative(p2b);
+
+      // ===== 3. Incertezza e robustezza =====
+      subHdr('3. Quanto e robusto il risultato');
+      var p3 = `Nessuna proiezione e un punto: e una distribuzione di esiti possibili. La forbice tra lo scenario pessimistico (${fmtFull(nP)} netti) e quello ottimistico (${fmtFull(nO)} netti) `;
+      if (spreadPO > 0.55)      p3 += `e ampia, coerentemente con una volatilita annua attesa del ${vol.toFixed(0)}%. In presenza di questa dispersione, lo scenario centrale va letto come la mediana di una distribuzione larga, non come un valore atteso affidabile: il rischio di sequenza dei rendimenti puo allontanare sensibilmente l'esito reale dalla media. `;
+      else if (spreadPO > 0.3)  p3 += `e moderata, in linea con una volatilita annua del ${vol.toFixed(0)}%. La dispersione esiste ma e gestibile; resta comunque buona norma non interpretare lo scenario centrale come un traguardo garantito. `;
+      else                      p3 += `e contenuta, riflesso di una volatilita annua bassa (${vol.toFixed(0)}%). Il portafoglio privilegia la prevedibilita degli esiti rispetto alla massimizzazione del rendimento atteso: un compromesso ragionevole per orizzonti brevi o bassa tolleranza al rischio. `;
+      narrative(p3);
+      if (mcProb != null) {
+        var p3b = `La simulazione Monte Carlo (migliaia di traiettorie con rendimenti casuali attorno alle ipotesi di base) stima una probabilita di successo del ${mcProb.toFixed(0)}% rispetto all'obiettivo impostato. `;
+        if (mcProb >= 80)      p3b += `Si tratta di un piano solido: regge nella maggioranza degli scenari, inclusi molti di quelli sfavorevoli. Un margine ulteriore puo derivare da versamenti piu costanti o da un orizzonte piu lungo.`;
+        else if (mcProb >= 50) p3b += `Il piano e plausibile ma non robusto: una quota rilevante di traiettorie non raggiunge l'obiettivo. Aumentare il versamento, allungare l'orizzonte o ridurre l'obiettivo sposterebbe la probabilita verso una zona piu sicura.`;
+        else                   p3b += `Il piano risulta fragile: la maggioranza delle traiettorie non centra l'obiettivo. E consigliabile rivedere le ipotesi di base, alzando i versamenti o ridimensionando il target.`;
+        narrative(p3b);
+      }
+
+      // ===== 4. A cosa prestare attenzione (avvisi dinamici) =====
+      var avvisi = [];
+      if (beta < 0.1)               avvisi.push(`Beta inflazione ${beta>=0?'+':''}${beta.toFixed(2)}: la copertura del portafoglio contro l'inflazione e modesta. In uno scenario di inflazione persistente il valore reale finale rischia di deludere rispetto alla proiezione centrale.`);
+      if (years < 10)               avvisi.push(`Orizzonte di ${years} anni: relativamente breve. La capitalizzazione composta ha poco tempo per agire e il timing di mercato pesa di piu; un drawdown vicino alla scadenza ha meno tempo per essere recuperato.`);
+      if (eqW >= 0.8 && years < 15) avvisi.push(`Esposizione azionaria elevata (${(eqW*100).toFixed(0)}%) su orizzonte non lungo: il rendimento atteso e alto ma il portafoglio puo subire cali del 40-50% in una crisi. Il rischio reale non e la volatilita, ma la tentazione di disinvestire al ribasso.`);
+      if (seq && seq.on)            avvisi.push(`Sequence-of-returns risk attivo: l'ordine temporale dei rendimenti influenza l'esito anche a parita di media. Cali nei primi anni (fase di accumulo) o in prossimita del traguardo sono i piu dannosi.`);
+      if (ter >= 0.5)               avvisi.push(`Costi di gestione (TER) ${ter.toFixed(2)}%/anno: per effetto del compounding, su ${years} anni erodono una quota non trascurabile del montante. A parita di strategia, prodotti analoghi a costo inferiore migliorano direttamente il risultato netto.`);
+      if (inflBottom < 1.5)         avvisi.push(`Inflazione ipotizzata ${inflBottom.toFixed(1)}%, inferiore alla media storica di lungo periodo (~2%). Un'ipotesi piu prudente alzerebbe l'erosione attesa e ridurrebbe il valore reale finale.`);
+      if (avvisi.length === 0)      avvisi.push(`I parametri appaiono complessivamente equilibrati. Resta valida la regola generale: la disciplina nei versamenti e la capacita di non liquidare durante i ribassi incidono sul risultato piu di qualunque ottimizzazione del portafoglio.`);
+      callout('Punti di attenzione', avvisi.slice(0, 3).join('   '), ORG);
+
+      // ===== 5. Bilancio critico: cosa potrebbe essere sopra o sottovalutato =====
+      var bilancio = [];
+      if (inflBottom < 2)             bilancio.push('l\'inflazione, se impostata sotto la media storica, tende a sottostimare l\'erosione reale');
+      if (taxPct < 20 && gF > 0.3)    bilancio.push('l\'impatto fiscale e spesso percepito come minore di quanto effettivamente incida sul netto');
+      if (mult > 2.5 && years < 20)   bilancio.push('un moltiplicatore elevato su orizzonte non lungo dipende fortemente dal rendimento ipotizzato, che e l\'assunzione piu incerta del modello');
+      if (beta < 0.1)                 bilancio.push('la protezione dall\'inflazione di questo portafoglio e verosimilmente sopravvalutata in scenari di carovita persistente');
+      if (vol > 14)                   bilancio.push('la stabilita del risultato puo essere sopravvalutata: l\'alta volatilita rende la mediana meno rappresentativa dell\'esito individuale');
+      var pf = `Sintesi operativa. Il riferimento corretto e il valore reale netto (${fmtFull(realN)} in potere d'acquisto di oggi), non il nominale lordo. `;
+      if (bilancio.length) pf += `Sul piano critico: ` + bilancio.slice(0, 3).join('; ') + `. `;
+      pf += `Le tre leve realmente sotto il tuo controllo restano il tasso di risparmio, l'orizzonte temporale e i costi; il rendimento di mercato non e governabile e va trattato come ipotesi, non come promessa. Questo documento e uno strumento di analisi e di educazione finanziaria: serve a comprendere le relazioni tra le variabili, non a prevedere il futuro.`;
+      callout('Bilancio critico e sintesi', pf, PUR);
+
+    } catch (eNarr) { /* la sezione narrativa non deve mai bloccare il PDF */ }
 
     // ─────────── 10. NOTE LEGALI FINALI ───────────
     sHdr('10 — Note Legali e Limiti del Modello', [150, 50, 50]);

@@ -971,10 +971,7 @@ function _renderVaRView() {
     </div>
 
     <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px;font-size:12px;color:var(--text3);line-height:1.7">
-      ${r.mc.var99 !== null
-        ? `<strong>Come leggere il VaR:</strong> un VaR 99% di −€${Math.round(r.mc.var99).toLocaleString('it-IT')} su orizzonte ${horizon} anno/i significa che nel 99% degli scenari simulati la perdita non supererà questa soglia. Nel restante 1% degli scenari (eventi rari ma possibili), la perdita attesa (CVaR 99%) è ${r.mc.cvar99 !== null ? '−€'+Math.round(r.mc.cvar99).toLocaleString('it-IT') : 'assente (portafoglio in guadagno anche in questo scenario)'}.<br>`
-        : `<strong>Nota sull'orizzonte ${horizon} anni:</strong> con un rendimento atteso di ${((mu-(ter||0)/100)*100).toFixed(1)}%/a e volatilità ${(vol*100).toFixed(1)}%/a, il portafoglio è atteso in guadagno anche negli scenari avversi al 95–99% su questo orizzonte. Il VaR risulta nullo: non significa assenza di rischio, ma che il drift positivo supera le perdite probabilistiche a questo livello di confidenza. Il VaR 99.9% (coda estrema) rimane significativo.<br>`
-      }
+      <strong>Come leggere il VaR:</strong> un VaR 99% di ${r.mc.var99 === null ? '<em>nessuna perdita attesa</em>' : '−€'+Math.round(r.mc.var99).toLocaleString('it-IT')} su orizzonte ${horizon} anno/i significa che nel 99% degli scenari simulati la perdita non supererà questa soglia. Nel restante 1% degli scenari (eventi rari ma possibili), la perdita attesa (CVaR 99%) è ${r.mc.cvar99 === null ? '<em>nessuna perdita attesa</em>' : '−€'+Math.round(r.mc.cvar99).toLocaleString('it-IT')}.<br>
       <strong>CVaR vs VaR:</strong> il CVaR (Expected Shortfall) è preferito dai regolatori (Basilea III, SOLVENCY II) perché misura <em>quanto si perde</em> quando si va oltre il VaR, non solo il punto di soglia. È la misura di rischio coerente per eccellenza (Artzner et al., 1999).
     </div>
   `;

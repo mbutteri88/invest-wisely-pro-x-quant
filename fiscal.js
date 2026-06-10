@@ -325,8 +325,10 @@ function renderFiscale() {
 function switchTab(tabId) {
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-  document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
-  document.getElementById(`tab-${tabId}`).classList.add('active');
+  const btn = document.querySelector(`[data-tab="${tabId}"]`);
+  if (btn) btn.classList.add('active');
+  const panel = document.getElementById(`tab-${tabId}`);
+  if (panel) panel.classList.add('active');
   if (tabId==='scenarios') { updateEcoTimDesc(); renderEcoScenarios(); if (typeof initMultiRegime === 'function') initMultiRegime(); }
   if (tabId==='ab') renderAB();
   if (tabId==='mc') document.getElementById('mcAccYears').textContent=state.years;
@@ -335,4 +337,6 @@ function switchTab(tabId) {
   if (tabId==='backtest') initBacktest();
   if (tabId==='advmc') document.getElementById('advMcModelDesc').innerHTML=ADV_MODEL_DESC[advMCState.model]||'';
 }
+// Esponi su window così i monkey-patch degli altri moduli trovano la funzione
+window.switchTab = switchTab;
 

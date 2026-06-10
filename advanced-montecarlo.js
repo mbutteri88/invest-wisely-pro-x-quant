@@ -71,47 +71,41 @@ function sampleRegime(months) {
 // BLOCK BOOTSTRAP — Dati storici reali mensili 1970–2024 (55 anni × 12 = 660 osservazioni)
 // Fonti:
 //   Azioni Mercati Sviluppati TR (EUR) — MSCI World Net EUR
-//   Obbligazioni USA Aggregate Bond — Federal Reserve FRED
-//   Oro spot (USD/oz) — prezzo mercato internazionale, dati mensili pubblici
+//   Obbligazioni — Bloomberg Euro Aggregate / Global Agg hedged EUR
+//   Oro — prezzo oro in EUR (LBMA)
 //   CPI USA (aggiustamento inflazione) — FRED serie CPIAUCSL
 //
 // I rendimenti sono nominali mensili log-return (r = ln(P_t/P_{t-1})).
-// Dati annualizzati: Azioni Sviluppati ~10.4%/a, Agg Bond ~7.2%/a, Oro ~7.8%/a (1970-2024).
-// Fonte: MSCI World Net EUR, Bloomberg Euro Aggregate, LBMA (oro EUR)
+// Dati annualizzati (EUR): Azioni ~8.5%/a, Bond ~5.6%/a, Oro ~6.9%/a (1970-2024).
+// Fonte: MSCI, Bloomberg, LBMA
 // ══════════════════════════════════════════════════════════════
 
 // Rendimenti mensili storici (formato: [az_sviluppati, agg_bond, gold_spot] per ogni mese)
 // 660 righe = Gen 1970 – Dic 2024
-// Dati storici pubblici: Azioni Sviluppati TR, Obbligazioni Aggregate USA, Oro spot
+// Dati storici: MSCI World Net EUR, Bloomberg Euro Aggregate, oro LBMA in EUR
 // I valori sono rendimenti semplici mensili (non log), es. 0.015 = +1.5%
 
-// ══════════════════════════════════════════════════════════════
-// CALIBRAZIONE DATI STORICI HIST_MONTHLY
-// ══════════════════════════════════════════════════════════════
-// I dati grezzi in HIST_MONTHLY hanno due bias sistematici noti:
-//   1. Equity: drift annuo sovrastimato (17%/a vs reale ~10%/a)
-//   2. Bond: include solo price return (manca componente cedolare)
-//      → CAGR risultante 0.6%/a vs reale ~6.5%/a US Aggregate
-// Applichiamo un offset mensile costante che preserva:
-//   - La struttura temporale (mesi negativi, crisi, drawdowns)
-//   - La volatilità mensile e annualizzata
-//   - Le correlazioni storiche tra asset
-// e corregge solo il drift annualizzato per allinearlo ai dati ufficiali.
-// Riferimenti: MSCI World Net EUR, Bloomberg Euro Aggregate, LBMA (oro EUR)
+// ============================================================
+// DATI STORICI HIST_MONTHLY — gia' reali, nessuna calibrazione
+// ============================================================
+// I 660 mesi (1970-2024) sono ancorati anno-per-anno ai rendimenti
+// REALI in EUR delle tre asset class:
+//   - Azioni: MSCI World Net Total Return (EUR)
+//   - Obbligazioni: Bloomberg Euro Aggregate / Global Agg hedged EUR
+//   - Oro: prezzo oro in EUR (LBMA)
+// Ogni anno colpisce il dato ufficiale (errore < 0.1pt). La forma
+// intra-annuale degli anni-crisi (1973-74, 1987, 2000-02, 2008, 2020,
+// 2022) riproduce l'andamento reale; gli anni ordinari sono distribuiti
+// con la volatilita' corretta attorno al rendimento annuo vero.
+// calibrateHistRow e' un'identita': i dati NON vanno ricalibrati.
 const HIST_CALIBRATION = {
-  // NON PIU' USATA per la calibrazione (calibrateHistRow ora e' identita').
-  // I dati HIST_MONTHLY sono gia' reali in EUR. Mantenuta solo come riferimento.
-  raw:    { eq:{m:0,s:1}, ob:{m:0,s:1}, gold:{m:0,s:1} },
-  target: { eq:{m:0,s:1}, ob:{m:0,s:1}, gold:{m:0,s:1} },
-  k:      { eq:1, ob:1, gold:1 },
+  raw:{eq:{m:0,s:1},ob:{m:0,s:1},gold:{m:0,s:1}}, target:{eq:{m:0,s:1},ob:{m:0,s:1},gold:{m:0,s:1}}, k:{eq:1,ob:1,gold:1},
 };
 // Applica calibrazione z-score+tanh a un singolo mese: normalizza il rendimento
 // grezzo, applica soft-clipping per limitare gli outlier, riscala al target.
 function calibrateHistRow(row) {
-  // I dati HIST_MONTHLY sono gia' i rendimenti mensili REALI in EUR (MSCI World
-  // Net EUR, Bloomberg Euro Aggregate, oro in EUR), ancorati anno-per-anno alle
-  // serie ufficiali 1970-2024. Non serve alcuna calibrazione: la funzione e'
-  // un'identita' (mantenuta per compatibilita' con i chiamanti esistenti).
+  // Dati HIST_MONTHLY gia' reali in EUR (MSCI World Net EUR, Bloomberg Euro Agg, oro
+  // EUR), ancorati anno-per-anno alle serie ufficiali 1970-2024. Identita'.
   return [row[0], row[1], row[2]];
 }
 
@@ -328,7 +322,7 @@ const ADV_MODEL_DESC = {
   student: '<strong>t di Student ν=4</strong> — distribuzioni a <em>code grasse</em>: i crash del −20/−40% accadono 3-5× più spesso rispetto alla gaussiana. Curtosi elevata (≈9 per ν=4 vs 3 della normale). Raccomandato per la pianificazione conservativa. Più basso è ν, più pesanti sono le code.',
   garch: '<strong>GARCH(1,1)</strong> — la volatilità non è costante ma <em>si autoalimenta</em>: un mese volatile tende a essere seguito da un altro volatile (<em>volatility clustering</em>, Engle 1982). I parametri α=0.09, β=0.90 sono calibrati su equity globale. Il fan chart si allarga e restringe nel tempo invece di essere monotonicamente crescente.',
   regime: '<strong>Regime-Switching (Hamilton 1989)</strong> — il mercato alterna due stati latenti: <em>Bull</em> (μ=+1.2%/m, σ=3.5%) e <em>Bear</em> (μ=−1.8%/m, σ=7.0%). La matrice di transizione P(Bull→Bull)=97%, P(Bear→Bull)=20% cattura la persistenza dei trend. I crash prolungati emergono naturalmente senza hardcodare il Sequence Risk.',
-  bootstrap: '<strong>Block Bootstrap — Dati Storici Reali (1970–2024)</strong> — campiona blocchi di 12 mesi contigui da 660 rendimenti mensili reali (Azioni Sviluppati, Obbligazioni Aggregate USA, Oro spot, CPI USA/FRED). I crash storici del 1973, 1987, 2000-02, 2008-09, 2022 entrano direttamente nella simulazione con la loro frequenza e sequenza reali. Nessuna assunzione parametrica sulla distribuzione. Correzione di drift per allineare il rendimento atteso al portafoglio selezionato. <em>Il modello più accurato per portafogli con componente azionaria e oro.</em>',
+  bootstrap: '<strong>Block Bootstrap — Dati Storici Reali (1970–2024)</strong> — campiona blocchi di 12 mesi contigui da 660 rendimenti mensili (Azioni MSCI World Net EUR, Obbligazioni Euro Aggregate, Oro in EUR; inflazione CPI USA). I crash storici del 1973, 1987, 2000-02, 2008-09, 2022 entrano direttamente nella simulazione con la loro frequenza e sequenza reali. Nessuna assunzione parametrica sulla distribuzione. Correzione di drift per allineare il rendimento atteso al portafoglio selezionato. <em>Il modello più accurato per portafogli con componente azionaria e oro.</em>',
 };
 document.getElementById('advMcModelBtns').onclick = e => {
   const b = e.target.closest('[data-m]'); if (!b) return;

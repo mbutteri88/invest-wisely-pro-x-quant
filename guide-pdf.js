@@ -176,7 +176,7 @@ async function downloadGuidePDF() {
     li('2019 — Pre-COVID: crash COVID -34% in 33 giorni, recovery completata in 6 mesi — il piu veloce crash e rimbalzo della storia.');
     li('2022 — Inflazione & rialzo tassi: azioni -20% E obbligazioni -15% insieme. Il 60/40 perde -17%: peggior anno per portafogli bilanciati dal 1937.');
     h2('Metodologia e dati');
-    li('Dati mensili reali: HIST_MONTHLY con rendimenti per asset class equity, bond, gold, cash calibrati su fonti primarie (Federal Reserve FRED, DMS Yearbook 2024, Fama-French Data Library).');
+    li('Dati mensili: HIST_MONTHLY con rendimenti per asset class equity, bond, gold ancorati anno per anno alle serie ufficiali in EUR (MSCI World Net EUR, Bloomberg Euro Aggregate, oro LBMA in EUR).');
     li('CAPE-adjusted equity: i rendimenti azionari sono aggiustati per il CAPE Shiller dell\'anno di partenza tramite Earnings Yield Delta (1/CAPE). CAPE alto = rendimenti attesi piu bassi, e viceversa.');
     li('Correlazioni dinamiche: in anni con drawdown equity > 15%, le correlazioni si avvicinano alla matrice STRESS (correlazioni osservate empiricamente in crisi). Cattura il \"correlation breakdown\" dei crash.');
     li('Inflazione storica: CPI annuale reale per ogni periodo, usato per deflatare e mostrare rendimento reale.');
@@ -222,7 +222,7 @@ async function downloadGuidePDF() {
     li('2020 COVID-19 — Crash piu veloce della storia: -34% in 33 giorni (febbraio-marzo 2020). Recovery altrettanto rapida: meno di 6 mesi. Fed interviene con QE illimitato. Obbligazioni governative e oro positivi per tutto il 2020.');
     li('2022 Inflazione & Tassi — Crisi unica: azioni -20% E obbligazioni -15% simultaneamente. Il 60/40 perde -17%, peggior anno dal 1937. Fed alza i tassi da 0.25% a 4.5% in 12 mesi. Solo cash e obbligazioni a brevissima duration tengono. L\'oro risulta quasi flat (-2%).');
     h2('Dati e metodologia');
-    li('Fonte dati: HIST_MONTHLY — rendimenti mensili reali di azioni sviluppati, obbligazioni aggregate e oro dal 1970 al 2024 (DMS Yearbook 2024, Federal Reserve FRED, mercato internazionale oro). 660 osservazioni mensili verificate.');
+    li('Fonte dati: HIST_MONTHLY — rendimenti mensili di azioni sviluppate, obbligazioni e oro dal 1970 al 2024, ancorati alle serie ufficiali in EUR (MSCI World Net EUR, Bloomberg Euro Aggregate, oro LBMA). 660 osservazioni mensili; totali annuali fedeli alle fonti, granularita mensile ricostruita.');
     li('Pesi portafoglio: quelli attuali del simulatore, aggiornati in tempo reale al cambio selezione. TER applicato mensilmente. Capitale, PAC e fase del piano sono quelli impostati: la fase scala il capitale esposto, coerente con la sezione Rischio di Sequenza.');
     li('Finestra: include alcuni mesi pre-crisi per contesto. Il drawdown e calcolato rispetto al picco della finestra mostrata.');
     li('Recovery: numero di mesi dal bottom per tornare al livello di inizio finestra (non al picco assoluto pre-crisi).');
@@ -259,6 +259,31 @@ async function downloadGuidePDF() {
     h2('Zainetto fiscale');
     p('Inserisci le minusvalenze pregresse (scadono dopo 4 anni) per stimare il risparmio fiscale residuo. In regime dichiarativo si compensano tutte le plusvalenze; in amministrato solo i redditi diversi (non ETF armonizzati).');
     callout('La fiscalita sugli strumenti finanziari italiani e complessa. Le simulazioni hanno scopo illustrativo. Per decisioni fiscali concrete consulta un commercialista o consulente fiscale abilitato.', AMBER, 'Nota legale');
+
+    h1('9a — Scheda Pensione (previdenza)');
+    p('Stima la pensione pubblica INPS e il ruolo della previdenza complementare (fondo pensione), per capire il "gap previdenziale" tra la pensione attesa e il tenore di vita desiderato, e quanto la previdenza integrativa puo colmarlo.');
+    h2('Input principali');
+    li('Eta attuale, eta di pensionamento, speranza di vita: definiscono gli anni di contribuzione residui e la durata della fase di pensione.');
+    li('RAL (retribuzione annua lorda) e sua crescita reale attesa: base per i contributi e per il calcolo del montante.');
+    li('Anni di contributi gia versati e montante contributivo gia accumulato: il punto di partenza.');
+    li('Aliquota contributiva IVS (33% per dipendenti privati): la quota di RAL che alimenta il montante INPS.');
+    li('Spesa mensile desiderata in pensione (in euro di oggi): l\'obiettivo rispetto a cui misurare il gap.');
+    li('Fondo pensione: versamento mensile, rendimento atteso, eventuale conferimento del TFR, e — se negoziale — contributo datoriale e quota contrattuale del lavoratore.');
+    h2('Come calcola la pensione pubblica (metodo contributivo)');
+    p('Nel sistema contributivo la pensione lorda annua = montante contributivo accumulato x coefficiente di trasformazione (legato all\'eta di pensionamento). Il montante cresce ogni anno per i nuovi contributi (aliquota IVS x RAL) e per la rivalutazione (media quinquennale del PIL nominale). Il modello usa i coefficienti di trasformazione ufficiali (range eta 57-71) e applica un declino annuo configurabile per tener conto delle revisioni biennali ISTAT (la speranza di vita che cresce abbassa progressivamente i coefficienti).');
+    li('Contributivo puro: per chi ha iniziato a lavorare dopo il 1995. Tutto a montante x coefficiente.');
+    li('Misto: per chi aveva gia anni di contributi nel 1995. Somma una quota retributiva (ante-1996) e una contributiva (post-1996).');
+    li('Retributivo: caso residuale per anzianita elevate ante-1996.');
+    h2('Tasso di sostituzione e gap previdenziale');
+    p('Il tasso di sostituzione e il rapporto tra la prima pensione e l\'ultima retribuzione: indica quanto del reddito da lavoro viene "sostituito" dalla pensione pubblica. In Italia, per i piu giovani nel sistema contributivo, tende a scendere sotto il 60-70%, lasciando un gap rispetto al tenore di vita pre-pensione. La scheda evidenzia questo gap e quanto il fondo pensione puo colmarlo.');
+    h2('Previdenza complementare e vantaggio fiscale');
+    p('I versamenti al fondo pensione sono deducibili dal reddito IRPEF fino a 5.164,57 euro l\'anno: la deduzione genera un risparmio fiscale pari all\'aliquota marginale IRPEF dell\'aderente. La scheda calcola questo risparmio e permette di scegliere come destinarlo: spenderlo, reinvestirlo nel fondo pensione stesso, o reinvestirlo nel portafoglio ETF del Simulatore. Reinvestire il risparmio fiscale e una delle leve piu potenti della previdenza integrativa.');
+    li('TFR al fondo: conferire il TFR (circa RAL/13,5 l\'anno) al fondo pensione invece di lasciarlo in azienda. La scheda confronta le due opzioni.');
+    li('Fondo negoziale: se previsto dal contratto, il datore di lavoro aggiunge un contributo (es. 1,5% della RAL) a condizione che il lavoratore versi la sua quota. E denaro aggiuntivo: la scheda lo include nel montante del fondo.');
+    li('Tassazione agevolata della rendita: i rendimenti del fondo pensione scontano un\'imposta sostitutiva ridotta e la prestazione finale ha aliquote agevolate (dal 15% che scende fino al 9% con l\'anzianita di partecipazione), contro il 26% degli investimenti ordinari.');
+    h2('Importa dal Simulatore');
+    p('Il pulsante di importazione recupera dal Simulatore il capitale ETF stimato al pensionamento e il rendimento netto del portafoglio scelto, cosi la proiezione previdenziale e coerente con il piano di accumulo impostato nelle altre schede.');
+    callout('I calcoli previdenziali sono stime basate sulla normativa vigente e su ipotesi (crescita RAL, rivalutazione montante, rendimenti, evoluzione dei coefficienti). La normativa previdenziale cambia nel tempo e i coefficienti vengono rivisti periodicamente. Le stime hanno scopo illustrativo e non sostituiscono una consulenza previdenziale qualificata (patronato, consulente previdenziale) ne le proiezioni ufficiali INPS ("La mia pensione futura").', AMBER, 'Nota importante');
 
     h1('10 — Sequence Risk, PIC e spese straordinarie');
     h2('Sequence Risk');

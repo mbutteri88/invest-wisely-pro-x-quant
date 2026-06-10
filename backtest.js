@@ -102,10 +102,7 @@ let btState = {
   pac: 500,
   w: 10000,
   showReal: false,
-  capeEnabled: false, // CAPE OFF di default: i dati storici sono gia' i rendimenti
-                      // reali accaduti (MSCI World Net EUR). Applicare il CAPE li
-                      // ri-scalerebbe due volte. Resta come toggle opzionale per
-                      // chi vuole un what-if forward-looking sulle valutazioni.
+  capeEnabled: false, // CAPE OFF di default: dati gia' reali (eviterebbe doppio conteggio)
   seqCrisis: 2008,   // crisi selezionata per lo stress test di sequenza
   seqMode: 'cap_pac', // modalità versamento: 'cap_pac' | 'solo_cap' | 'solo_pac'
   crisisSeqMode: 'solo_cap', // modalità versamento per la sezione Stress Test Macro
